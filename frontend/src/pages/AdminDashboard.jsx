@@ -1,0 +1,648 @@
+import { useEffect, useState } from 'react';
+import Layout from '../components/Layout';
+import api from '../api/client';
+
+const TABS = [
+  { key: 'users', label: 'Users' },
+  { key: 'activity', label: 'Activity Logs' },
+  { key: 'credentials', label: 'Platform Credentials' },
+];
+
+const ALL_PLATFORMS = ['telegram', 'facebook', 'instagram', 'linkedin'];
+
+const PLATFORM_LABELS = {
+  telegram: 'Telegram',
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  linkedin: 'LinkedIn',
+};
+
+const EVENT_LABELS = {
+  register: 'Registered',
+  login: 'Logged in',
+  login_failed: 'Failed login',
+  logout: 'Logged out',
+  post_created: 'Created post',
+  post_published: 'Post published',
+  post_partial: 'Post partially published',
+  post_failed: 'Post failed',
+  account_connected: 'Connected account',
+  account_disconnected: 'Disconnected account',
+  branding_updated: 'Updated branding',
+  user_created_by_admin: 'User created (by admin)',
+  permissions_updated: 'Permissions updated',
+};
+
+const LOGIN_EVENT_GROUP = 'login,login_failed,logout';
+
+function fmt(dt) {
+  return dt ? new Date(dt).toLocaleString() : '—';
+}
+
+export default function AdminDashboard() {
+  const [tab, setTab] = useState('users');
+  const [loginHistoryTarget, setLoginHistoryTarget] = useState(null); // { id, name } | null
+
+  // A plain tab click always starts fresh — only the "Login History" button
+  // (below) should carry a filter into the Activity Logs tab.
+  const selectTab = (key) => {
+    setLoginHistoryTarget(null);
+    setTab(key);
+  };
+
+  const viewLoginHistory = (user) => {
+    setLoginHistoryTarget({ id: user.id, name: user.name });
+    setTab('activity');
+  };
+
+  return (
+    <Layout>
+      <h1>Admin</h1>
+      <p className="page-subtitle">Super admin only — users, activity, and platform credentials.</p>
+
+      <div className="admin-tabs">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            className={'admin-tab' + (tab === t.key ? ' active' : '')}
+            onClick={() => selectTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'users' && <UsersPanel onViewLoginHistory={viewLoginHistory} />}
+      {tab === 'activity' && (
+        <ActivityPanel
+          presetUserId={loginHistoryTarget?.id}
+          presetUserName={loginHistoryTarget?.name}
+          onClearPreset={() => setLoginHistoryTarget(null)}
+        />
+      )}
+      {tab === 'credentials' && <CredentialsPanel />}
+    </Layout>
+  );
+}
+
+function PlatformCheckboxes({ value, onChange }) {
+  const toggle = (platform) => {
+    onChange(
+      value.includes(platform) ? value.filter((p) => p !== platform) : [...value, platform]
+    );
+  };
+
+  return (
+    <div className="platform-checkboxes">
+      {ALL_PLATFORMS.map((p) => (
+        <label key={p} className="checkbox-pill">
+          <input type="checkbox" checked={value.includes(p)} onChange={() => toggle(p)} />
+          {PLATFORM_LABELS[p]}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function CreateUserForm({ onCreated, onCancel }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('user');
+  const [platforms, setPlatforms] = useState([]);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const res = await api.post('/admin/users', {
+        name,
+        email,
+        phone: phone || undefined,
+        password: password || undefined,
+        role,
+        allowed_platforms: platforms,
+      });
+      setResult(res.data);
+      onCreated();
+    } catch (err) {
+      const errors = err.response?.data?.errors;
+      const firstError = errors ? Object.values(errors)[0]?.[0] : null;
+      setError(firstError || err.response?.data?.message || 'Could not create user.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (result) {
+    return (
+      <div className="card">
+        <h2>User created ✓</h2>
+        <p>
+          <strong>{result.name}</strong> ({result.email}) has been created.
+        </p>
+        {result.email_sent ? (
+          <div className="alert alert-success">
+            📧 An email with their login details was sent to {result.email}.
+          </div>
+        ) : (
+          <div className="alert alert-error">
+            Couldn't send the welcome email — share their login details manually.
+          </div>
+        )}
+        {result.generated_password && (
+          <div className="alert alert-info">
+            No password was set, so one was generated:{' '}
+            <code className="generated-password">{result.generated_password}</code>
+            <br />
+            This is also a fallback in case the email above didn't arrive — it will not be shown
+            again after you close this.
+          </div>
+        )}
+        <button className="btn btn-ghost" onClick={onCancel}>
+          Close
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form className="card" onSubmit={handleSubmit}>
+      <h2>Create User</h2>
+
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div className="form-row">
+        <label className="field">
+          <span>Name</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} required />
+        </label>
+        <label className="field">
+          <span>Email</span>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </label>
+      </div>
+
+      <div className="form-row">
+        <label className="field">
+          <span>Phone (optional)</span>
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Password (leave blank to auto-generate)</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            minLength={8}
+          />
+        </label>
+      </div>
+
+      <label className="field">
+        <span>Role</span>
+        <select value={role} onChange={(e) => setRole(e.target.value)}>
+          <option value="user">User</option>
+          <option value="super_admin">Super Admin</option>
+        </select>
+      </label>
+
+      <label className="field">
+        <span>Platform Permissions</span>
+        <PlatformCheckboxes value={platforms} onChange={setPlatforms} />
+      </label>
+
+      <div className="form-actions">
+        <button className="btn btn-primary" disabled={busy}>
+          {busy ? 'Creating...' : 'Create User'}
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function UsersPanel({ onViewLoginHistory }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editDraft, setEditDraft] = useState([]);
+
+  const load = () => {
+    setLoading(true);
+    api
+      .get('/admin/users')
+      .then((res) => setUsers(res.data.data))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const toggleRole = async (user) => {
+    const newRole = user.role === 'super_admin' ? 'user' : 'super_admin';
+    if (!window.confirm(`Set ${user.name} as ${newRole === 'super_admin' ? 'Super Admin' : 'regular User'}?`)) return;
+    setBusyId(user.id);
+    try {
+      await api.patch(`/admin/users/${user.id}`, { role: newRole });
+      load();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Could not update role.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const startEditingPermissions = (user) => {
+    setEditingId(user.id);
+    setEditDraft(user.allowed_platforms || []);
+  };
+
+  const savePermissions = async (user) => {
+    setBusyId(user.id);
+    try {
+      await api.patch(`/admin/users/${user.id}`, { allowed_platforms: editDraft });
+      setEditingId(null);
+      load();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Could not update permissions.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (loading) return <p>Loading...</p>;
+
+  return (
+    <>
+      <div className="panel-header">
+        <h2 className="panel-title-inline">All Users ({users.length})</h2>
+        {!showCreate && (
+          <button className="btn btn-primary btn-small" onClick={() => setShowCreate(true)}>
+            + Create User
+          </button>
+        )}
+      </div>
+
+      {showCreate && (
+        <CreateUserForm
+          onCreated={load}
+          onCancel={() => setShowCreate(false)}
+        />
+      )}
+
+      <div className="card">
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Platform Access</th>
+                <th>Accounts</th>
+                <th>Last Login</th>
+                <th>Last Login IP</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id}>
+                  <td>{u.name}</td>
+                  <td>{u.email}</td>
+                  <td>{u.phone || '—'}</td>
+                  <td>
+                    <span className={'role-badge' + (u.role === 'super_admin' ? ' role-admin' : '')}>
+                      {u.role === 'super_admin' ? 'Super Admin' : 'User'}
+                    </span>
+                  </td>
+                  <td className="platforms-cell">
+                    {u.role === 'super_admin' ? (
+                      <span className="muted small">All (admin)</span>
+                    ) : editingId === u.id ? (
+                      <div className="permission-editor">
+                        <PlatformCheckboxes value={editDraft} onChange={setEditDraft} />
+                        <div className="form-actions">
+                          <button
+                            className="btn btn-primary btn-small"
+                            disabled={busyId === u.id}
+                            onClick={() => savePermissions(u)}
+                          >
+                            Save
+                          </button>
+                          <button className="btn btn-ghost btn-small" onClick={() => setEditingId(null)}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {(u.allowed_platforms || []).length === 0 ? (
+                          <span className="muted small">None</span>
+                        ) : (
+                          u.allowed_platforms.map((p) => (
+                            <span key={p} className={`platform-badge platform-${p}`}>
+                              {PLATFORM_LABELS[p] || p}
+                            </span>
+                          ))
+                        )}
+                        <button
+                          className="btn btn-ghost btn-small"
+                          onClick={() => startEditingPermissions(u)}
+                        >
+                          Edit
+                        </button>
+                      </>
+                    )}
+                  </td>
+                  <td>{u.social_accounts_count}</td>
+                  <td className="nowrap">{fmt(u.last_login_at)}</td>
+                  <td>{u.last_login_ip || '—'}</td>
+                  <td className="nowrap">
+                    <button
+                      className="btn btn-ghost btn-small"
+                      onClick={() => onViewLoginHistory(u)}
+                    >
+                      Login History
+                    </button>{' '}
+                    <button
+                      className="btn btn-ghost btn-small"
+                      disabled={busyId === u.id}
+                      onClick={() => toggleRole(u)}
+                    >
+                      {u.role === 'super_admin' ? 'Revoke Admin' : 'Make Admin'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ActivityPanel({ presetUserId, presetUserName, onClearPreset }) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(null);
+  const [eventFilter, setEventFilter] = useState(presetUserId ? LOGIN_EVENT_GROUP : '');
+  const [userIdFilter, setUserIdFilter] = useState(presetUserId ? String(presetUserId) : '');
+
+  const load = (p = page, event = eventFilter, userId = userIdFilter) => {
+    setLoading(true);
+    api
+      .get('/admin/activity-logs', {
+        params: { page: p, event: event || undefined, user_id: userId || undefined },
+      })
+      .then((res) => {
+        setLogs(res.data.data);
+        setPagination(res.data);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load(1, eventFilter, userIdFilter);
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventFilter, userIdFilter]);
+
+  const goPage = (p) => {
+    setPage(p);
+    load(p, eventFilter, userIdFilter);
+  };
+
+  const clearUserFilter = () => {
+    setUserIdFilter('');
+    setEventFilter('');
+    onClearPreset?.();
+  };
+
+  return (
+    <div className="card">
+      <div className="panel-header">
+        <h2>Activity Log</h2>
+        <select value={eventFilter} onChange={(e) => setEventFilter(e.target.value)}>
+          <option value="">All events</option>
+          <option value={LOGIN_EVENT_GROUP}>Login activity (login/failed/logout)</option>
+          {Object.entries(EVENT_LABELS).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {userIdFilter && (
+        <div className="alert alert-info">
+          Showing only <strong>{presetUserName || `user #${userIdFilter}`}</strong>'s activity.{' '}
+          <button className="btn btn-ghost btn-small" onClick={clearUserFilter}>
+            Clear filter
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>User</th>
+                  <th>Event</th>
+                  <th>Description</th>
+                  <th>IP</th>
+                  <th>Location</th>
+                  <th>Device</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id}>
+                    <td className="nowrap">{fmt(log.created_at)}</td>
+                    <td>
+                      {log.user ? (
+                        <>
+                          <div>{log.user.name}</div>
+                          <div className="muted small">{log.user.email}</div>
+                        </>
+                      ) : (
+                        <span className="muted">Unknown</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={'event-badge event-' + log.event}>
+                        {EVENT_LABELS[log.event] || log.event}
+                      </span>
+                    </td>
+                    <td>{log.description || '—'}</td>
+                    <td>{log.ip_address || '—'}</td>
+                    <td>{[log.city, log.country].filter(Boolean).join(', ') || '—'}</td>
+                    <td>
+                      {log.device_type || '—'}
+                      {log.browser ? ` · ${log.browser}` : ''}
+                      {log.platform ? ` · ${log.platform}` : ''}
+                    </td>
+                  </tr>
+                ))}
+                {logs.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="muted">
+                      No activity yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {pagination && pagination.last_page > 1 && (
+            <div className="pagination">
+              <button
+                className="btn btn-ghost btn-small"
+                disabled={page <= 1}
+                onClick={() => goPage(page - 1)}
+              >
+                ← Prev
+              </button>
+              <span className="muted small">
+                Page {pagination.current_page} of {pagination.last_page}
+              </span>
+              <button
+                className="btn btn-ghost btn-small"
+                disabled={page >= pagination.last_page}
+                onClick={() => goPage(page + 1)}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function CredentialsPanel() {
+  const [credentials, setCredentials] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState({});
+  const [busyPlatform, setBusyPlatform] = useState(null);
+  const [message, setMessage] = useState('');
+
+  const load = () => {
+    setLoading(true);
+    api
+      .get('/admin/platform-credentials')
+      .then((res) => setCredentials(res.data))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const setDraft = (platform, field, value) => {
+    setDrafts((d) => ({ ...d, [platform]: { ...d[platform], [field]: value } }));
+  };
+
+  const save = async (cred) => {
+    const draft = drafts[cred.platform] || {};
+    setBusyPlatform(cred.platform);
+    setMessage('');
+    try {
+      await api.post(`/admin/platform-credentials/${cred.platform}`, {
+        client_id: draft.client_id ?? cred.client_id,
+        client_secret: draft.client_secret || undefined,
+        is_enabled: draft.is_enabled ?? cred.is_enabled,
+      });
+      setMessage(`${PLATFORM_LABELS[cred.platform]} credentials saved.`);
+      load();
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Could not save credentials.');
+    } finally {
+      setBusyPlatform(null);
+    }
+  };
+
+  if (loading) return <p>Loading...</p>;
+
+  return (
+    <div className="card">
+      <h2>Platform App Credentials</h2>
+      <p className="muted">
+        These are your SaaS's own OAuth developer app keys for each platform (used to let users
+        connect their accounts) — not any individual user's password.
+      </p>
+
+      {message && <div className="alert alert-info">{message}</div>}
+
+      <div className="credentials-grid">
+        {credentials.map((cred) => {
+          const draft = drafts[cred.platform] || {};
+          return (
+            <div className="credential-card" key={cred.platform}>
+              <div className="credential-header">
+                <span className={`platform-badge platform-${cred.platform}`}>
+                  {PLATFORM_LABELS[cred.platform]}
+                </span>
+                <label className="toggle">
+                  <input
+                    type="checkbox"
+                    checked={draft.is_enabled ?? cred.is_enabled}
+                    onChange={(e) => setDraft(cred.platform, 'is_enabled', e.target.checked)}
+                  />
+                  Enabled
+                </label>
+              </div>
+
+              <label className="field">
+                <span>Client ID / App ID</span>
+                <input
+                  value={draft.client_id ?? cred.client_id ?? ''}
+                  onChange={(e) => setDraft(cred.platform, 'client_id', e.target.value)}
+                />
+              </label>
+
+              <label className="field">
+                <span>Client Secret</span>
+                <input
+                  type="password"
+                  value={draft.client_secret ?? ''}
+                  onChange={(e) => setDraft(cred.platform, 'client_secret', e.target.value)}
+                  placeholder={cred.has_secret ? cred.client_secret_masked : 'Not set'}
+                />
+              </label>
+
+              <button
+                className="btn btn-primary btn-small"
+                disabled={busyPlatform === cred.platform}
+                onClick={() => save(cred)}
+              >
+                {busyPlatform === cred.platform ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

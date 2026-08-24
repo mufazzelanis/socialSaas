@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Http\Controllers\Api\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\PlatformCredential;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+class PlatformCredentialController extends Controller
+{
+    protected array $platforms = ['facebook', 'instagram', 'linkedin'];
+
+    public function index(Request $request)
+    {
+        $existing = PlatformCredential::all()->keyBy('platform');
+
+        $rows = collect($this->platforms)->map(function ($platform) use ($existing) {
+            return $existing->get($platform) ?? new PlatformCredential([
+                'platform' => $platform,
+                'is_enabled' => false,
+            ]);
+        });
+
+        return response()->json($rows->values());
+    }
+
+    public function update(Request $request, string $platform)
+    {
+        if (! in_array($platform, $this->platforms, true)) {
+            abort(404, 'Unknown platform.');
+        }
+
+        $data = $request->validate([
+            'client_id' => ['nullable', 'string', 'max:255'],
+            'client_secret' => ['nullable', 'string', 'max:1000'],
+            'is_enabled' => ['sometimes', 'boolean'],
+        ]);
+
+        $credential = PlatformCredential::firstOrNew(['platform' => $platform]);
+
+        if (array_key_exists('client_id', $data)) {
+            $credential->client_id = $data['client_id'];
+        }
+
+        // Only overwrite the secret if a new one was actually submitted —
+        // the frontend only ever sees a masked version, never the real value.
+        if (! empty($data['client_secret'])) {
+            $credential->client_secret = $data['client_secret'];
+        }
+
+        if (array_key_exists('is_enabled', $data)) {
+            $credential->is_enabled = $data['is_enabled'];
+        }
+
+        $credential->updated_by = $request->user()->id;
+        $credential->save();
+
+        return response()->json($credential);
+    }
+}

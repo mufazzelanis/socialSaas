@@ -1,0 +1,53 @@
+<?php
+
+use App\Http\Controllers\Api\Admin\ActivityLogController;
+use App\Http\Controllers\Api\Admin\PlatformCredentialController;
+use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BrandSettingController;
+use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\SocialAccountController;
+use App\Http\Controllers\Api\SocialOAuthController;
+use Illuminate\Support\Facades\Route;
+
+Route::middleware('throttle:auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+});
+
+// Public: the platform redirects the browser straight here after the user
+// approves/denies access — no Sanctum token is attached to that request.
+Route::get('/social-accounts/oauth/{platform}/callback', [SocialOAuthController::class, 'callback']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+
+    Route::get('/social-accounts', [SocialAccountController::class, 'index']);
+    Route::post('/social-accounts', [SocialAccountController::class, 'store']);
+    Route::delete('/social-accounts/{socialAccount}', [SocialAccountController::class, 'destroy']);
+    Route::get('/social-accounts/oauth/{platform}/redirect', [SocialOAuthController::class, 'redirect']);
+
+    Route::get('/posts', [PostController::class, 'index']);
+    Route::post('/posts', [PostController::class, 'store']);
+    Route::get('/posts/{post}', [PostController::class, 'show']);
+    Route::post('/posts/{post}/publish', [PostController::class, 'publish']);
+    Route::post('/posts/{post}/platforms/{postPlatform}/retry', [PostController::class, 'retryPlatform']);
+    Route::delete('/posts/{post}', [PostController::class, 'destroy']);
+
+    Route::get('/brand-settings', [BrandSettingController::class, 'show']);
+    Route::post('/brand-settings', [BrandSettingController::class, 'update']);
+
+    Route::middleware('super_admin')->prefix('admin')->group(function () {
+        Route::get('/users', [AdminUserController::class, 'index']);
+        Route::post('/users', [AdminUserController::class, 'store']);
+        Route::patch('/users/{user}', [AdminUserController::class, 'update']);
+
+        Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+
+        Route::get('/platform-credentials', [PlatformCredentialController::class, 'index']);
+        Route::post('/platform-credentials/{platform}', [PlatformCredentialController::class, 'update']);
+    });
+});

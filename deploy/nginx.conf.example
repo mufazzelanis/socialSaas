@@ -1,0 +1,64 @@
+# Example Nginx vhost for the Laravel API backend, served over HTTPS via
+# Let's Encrypt/Certbot. Adjust paths, domain, and PHP-FPM socket for your
+# actual server before using. This assumes a typical Ubuntu + PHP-FPM setup;
+# shared hosting / cPanel / Docker will look different — ask if that's your
+# target and this can be adapted.
+#
+# The React frontend is a static build (`npm run build` -> dist/) — serve it
+# either from its own vhost/CDN, or from the same server as static files.
+# It does NOT need PHP-FPM or a Node process running in production.
+
+server {
+    listen 80;
+    server_name api.yourdomain.com;
+
+    # Certbot will add the redirect-to-HTTPS block here automatically
+    # (`certbot --nginx`). Until then this just serves HTTP.
+    root /var/www/social-saas/backend/public;
+    index index.php;
+
+    # Must be >= the app's own upload cap (2GB video) or Nginx rejects large
+    # uploads before PHP ever sees them, regardless of php.ini settings.
+    client_max_body_size 2200M;
+
+    # Give slow video uploads room — Nginx's own defaults (60s) can cut off
+    # a large upload before it finishes even if PHP would've allowed it.
+    client_body_timeout 1800s;
+    fastcgi_read_timeout 1800s;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        # Adjust to your installed PHP version's fpm socket:
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    access_log /var/log/nginx/social-saas-api.access.log;
+    error_log  /var/log/nginx/social-saas-api.error.log;
+}
+
+# --- Frontend (static React build) served from a separate subdomain ---
+server {
+    listen 80;
+    server_name app.yourdomain.com;
+
+    root /var/www/social-saas/frontend/dist;
+    index index.html;
+
+    location / {
+        # SPA fallback: let React Router handle unknown paths client-side.
+        try_files $uri $uri/ /index.html;
+    }
+
+    access_log /var/log/nginx/social-saas-app.access.log;
+    error_log  /var/log/nginx/social-saas-app.error.log;
+}
