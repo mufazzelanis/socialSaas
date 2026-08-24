@@ -13,6 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // The local Apache vhost (socialsaas.test) terminates TLS then
+        // proxies to `php artisan serve` over plain HTTP on the same
+        // machine — without this, url()/isSecure() can't tell the original
+        // request was HTTPS, so generated URLs (e.g. the Facebook OAuth
+        // redirect_uri) would wrongly come out as http://.
+        $middleware->trustProxies(at: ['127.0.0.1']);
+
         $middleware->api(prepend: [
             \Illuminate\Http\Middleware\HandleCors::class,
         ]);

@@ -15,9 +15,11 @@ class LinkedInConnector implements SocialConnectorInterface
             'client_id' => $credential->client_id,
             'redirect_uri' => $redirectUri,
             'state' => $state,
-            // "Sign In with LinkedIn using OpenID Connect" + "Share on
-            // LinkedIn" products both need to be added to the app in the
-            // LinkedIn Developer Portal for these scopes to be grantable.
+            // Personal-profile posting only. Posting to a Company Page
+            // instead needs LinkedIn's "Community Management API", which
+            // (as of 2023+) LinkedIn generally only grants to approved
+            // Marketing Developer Platform partners — it's no longer
+            // self-serve for most apps, so we don't attempt it here.
             'scope' => 'openid profile w_member_social',
         ];
 

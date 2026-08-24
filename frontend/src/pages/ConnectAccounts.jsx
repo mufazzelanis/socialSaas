@@ -68,9 +68,9 @@ export default function ConnectAccounts() {
   const [busy, setBusy] = useState(false);
   const [oauthBusy, setOauthBusy] = useState(null);
 
-  const [botToken, setBotToken] = useState('');
   const [chatId, setChatId] = useState('');
   const [accountName, setAccountName] = useState('');
+  const [telegramBot, setTelegramBot] = useState(null);
 
   const loadAccounts = () => {
     setLoading(true);
@@ -82,6 +82,10 @@ export default function ConnectAccounts() {
 
   useEffect(() => {
     loadAccounts();
+    api
+      .get('/social-accounts/telegram-bot-info')
+      .then((res) => setTelegramBot(res.data))
+      .catch(() => setTelegramBot({ configured: false, bot_username: null }));
   }, []);
 
   const handleConnectTelegram = async (e) => {
@@ -92,12 +96,10 @@ export default function ConnectAccounts() {
     try {
       await api.post('/social-accounts', {
         platform: 'telegram',
-        bot_token: botToken,
         chat_id: chatId,
         account_name: accountName || undefined,
       });
       setSuccess('Telegram account connected successfully.');
-      setBotToken('');
       setChatId('');
       setAccountName('');
       loadAccounts();
@@ -229,32 +231,29 @@ export default function ConnectAccounts() {
           <div className="alert alert-info">
             🔒 Not available for your account yet. Ask your admin to turn it on for you.
           </div>
+        ) : !telegramBot ? (
+          <p>Loading...</p>
+        ) : !telegramBot.configured ? (
+          <div className="alert alert-info">
+            Telegram isn't set up yet — ask your admin to configure the bot in Platform
+            Credentials first.
+          </div>
         ) : (
           <>
             <p className="muted">
-              Create a bot with{' '}
-              <a href="https://t.me/BotFather" target="_blank" rel="noreferrer">
-                @BotFather
-              </a>{' '}
-              on Telegram, copy the bot token, add the bot as admin to your channel/group,
-              then paste the channel/chat ID below (e.g. <code>@yourchannel</code> or a numeric
-              chat id).
+              Add{' '}
+              <strong>{telegramBot.bot_username ? `@${telegramBot.bot_username.replace(/^@/, '')}` : 'our bot'}</strong>{' '}
+              as admin to your Telegram channel/group, then paste the channel/chat ID below
+              (e.g. <code>@yourchannel</code> or a numeric chat id). Have more than one
+              channel/group? Connect this one, then just fill in the form again with the next
+              chat ID — each one gets added separately, and you can pick any combination of them
+              when publishing a post.
             </p>
 
             {error && <div className="alert alert-error">{error}</div>}
             {success && <div className="alert alert-success">{success}</div>}
 
             <form onSubmit={handleConnectTelegram} className="form-grid">
-              <label className="field">
-                <span>Bot Token</span>
-                <input
-                  value={botToken}
-                  onChange={(e) => setBotToken(e.target.value)}
-                  placeholder="123456789:ABCdefGhIJKlmNoPQRstuVWXyz"
-                  required
-                />
-              </label>
-
               <label className="field">
                 <span>Chat / Channel ID</span>
                 <input

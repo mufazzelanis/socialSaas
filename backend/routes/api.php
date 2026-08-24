@@ -26,6 +26,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
 
     Route::get('/social-accounts', [SocialAccountController::class, 'index']);
+    Route::get('/social-accounts/telegram-bot-info', [SocialAccountController::class, 'telegramBotInfo']);
     Route::post('/social-accounts', [SocialAccountController::class, 'store']);
     Route::delete('/social-accounts/{socialAccount}', [SocialAccountController::class, 'destroy']);
     Route::get('/social-accounts/oauth/{platform}/redirect', [SocialOAuthController::class, 'redirect']);

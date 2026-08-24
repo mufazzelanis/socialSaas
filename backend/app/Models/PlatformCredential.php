@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
 
 class PlatformCredential extends Model
@@ -10,6 +11,7 @@ class PlatformCredential extends Model
         'platform',
         'client_id',
         'client_secret',
+        'config_id',
         'is_enabled',
         'updated_by',
     ];
@@ -42,7 +44,14 @@ class PlatformCredential extends Model
             return null;
         }
 
-        return '••••••••' . substr($this->client_secret, -4);
+        // The value can fail to decrypt if APP_KEY changed since it was
+        // saved — treat that as "not set" rather than 500ing the whole
+        // credentials list.
+        try {
+            return '••••••••' . substr($this->client_secret, -4);
+        } catch (DecryptException) {
+            return null;
+        }
     }
 
     public function updatedBy()

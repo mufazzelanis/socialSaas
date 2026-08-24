@@ -31,14 +31,25 @@ class FacebookConnector implements SocialConnectorInterface
             'redirect_uri' => $redirectUri,
             'state' => $state,
             'response_type' => 'code',
-            'scope' => implode(',', [
+        ];
+
+        // Business-type Meta apps get "Facebook Login for Business" instead
+        // of classic Facebook Login — it authorizes via a Configuration ID
+        // (created in the app's Login for Business -> Configurations screen)
+        // rather than a raw `scope` list. Without it, Facebook's own dialog
+        // rejects the request as an unavailable feature. Consumer-type apps
+        // still use plain `scope`, so support both.
+        if ($credential->config_id) {
+            $params['config_id'] = $credential->config_id;
+        } else {
+            $params['scope'] = implode(',', [
                 'pages_show_list',
                 'pages_manage_posts',
                 'pages_read_engagement',
                 'instagram_basic',
                 'instagram_content_publish',
-            ]),
-        ];
+            ]);
+        }
 
         return "https://www.facebook.com/{$this->version()}/dialog/oauth?".http_build_query($params);
     }

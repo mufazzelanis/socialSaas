@@ -572,6 +572,7 @@ function CredentialsPanel() {
       await api.post(`/admin/platform-credentials/${cred.platform}`, {
         client_id: draft.client_id ?? cred.client_id,
         client_secret: draft.client_secret || undefined,
+        config_id: draft.config_id ?? cred.config_id,
         is_enabled: draft.is_enabled ?? cred.is_enabled,
       });
       setMessage(`${PLATFORM_LABELS[cred.platform]} credentials saved.`);
@@ -615,22 +616,57 @@ function CredentialsPanel() {
               </div>
 
               <label className="field">
-                <span>Client ID / App ID</span>
+                <span>{cred.platform === 'telegram' ? 'Bot Username' : 'Client ID / App ID'}</span>
                 <input
                   value={draft.client_id ?? cred.client_id ?? ''}
                   onChange={(e) => setDraft(cred.platform, 'client_id', e.target.value)}
+                  placeholder={cred.platform === 'telegram' ? '@MySaaSBot' : undefined}
                 />
               </label>
 
               <label className="field">
-                <span>Client Secret</span>
+                <span>{cred.platform === 'telegram' ? 'Bot Token' : 'Client Secret'}</span>
                 <input
                   type="password"
                   value={draft.client_secret ?? ''}
                   onChange={(e) => setDraft(cred.platform, 'client_secret', e.target.value)}
-                  placeholder={cred.has_secret ? cred.client_secret_masked : 'Not set'}
+                  placeholder={
+                    cred.has_secret
+                      ? cred.client_secret_masked
+                      : cred.platform === 'telegram'
+                        ? '123456789:ABCdefGhIJKlmNoPQRstuVWXyz'
+                        : 'Not set'
+                  }
                 />
               </label>
+              {cred.platform === 'telegram' && (
+                <p className="muted small">
+                  Create this bot once with{' '}
+                  <a href="https://t.me/BotFather" target="_blank" rel="noreferrer">
+                    @BotFather
+                  </a>{' '}
+                  — every user will add it as admin to their own channel/group.
+                </p>
+              )}
+
+              {cred.platform === 'facebook' && (
+                <>
+                  <label className="field">
+                    <span>Login Configuration ID</span>
+                    <input
+                      value={draft.config_id ?? cred.config_id ?? ''}
+                      onChange={(e) => setDraft(cred.platform, 'config_id', e.target.value)}
+                      placeholder="e.g. 1234567890123456"
+                    />
+                  </label>
+                  <p className="muted small">
+                    Required if your app uses "Facebook Login for Business" (Meta shows this
+                    on Business-type apps instead of classic Facebook Login). Find/create it
+                    under <strong>Facebook Login for Business → Configurations</strong> in the
+                    Meta Developer Console, then paste the Configuration ID here.
+                  </p>
+                </>
+              )}
 
               <button
                 className="btn btn-primary btn-small"

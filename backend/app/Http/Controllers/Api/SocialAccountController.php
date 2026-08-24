@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PlatformCredential;
 use App\Models\SocialAccount;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
@@ -16,6 +17,21 @@ class SocialAccountController extends Controller
         return response()->json(
             $request->user()->socialAccounts()->latest()->get()
         );
+    }
+
+    /**
+     * Public-ish info a normal user needs to connect Telegram themselves:
+     * which bot (by @username) to add as admin to their channel. Never
+     * exposes the bot token itself.
+     */
+    public function telegramBotInfo(Request $request)
+    {
+        $credential = PlatformCredential::where('platform', 'telegram')->first();
+
+        return response()->json([
+            'configured' => (bool) ($credential?->is_enabled && $credential?->has_secret),
+            'bot_username' => $credential?->client_id,
+        ]);
     }
 
     public function store(Request $request)
@@ -39,13 +55,26 @@ class SocialAccountController extends Controller
     protected function connectTelegram(Request $request)
     {
         $data = $request->validate([
-            'bot_token' => ['required', 'string'],
             'chat_id' => ['required', 'string'],
             'account_name' => ['nullable', 'string', 'max:255'],
         ]);
 
-        // Verify the bot token + chat id actually work before saving.
-        $response = Http::get("https://api.telegram.org/bot{$data['bot_token']}/getChat", [
+        // The bot itself is the SaaS's own — configured once by a super
+        // admin in Platform Credentials — not something each user brings.
+        // Users only add that bot as admin to their channel and give us
+        // the chat id.
+        $credential = PlatformCredential::where('platform', 'telegram')->first();
+
+        if (! $credential || ! $credential->is_enabled || ! $credential->has_secret) {
+            throw ValidationException::withMessages([
+                'chat_id' => ['Telegram isn\'t set up yet — ask your admin to configure the bot first.'],
+            ]);
+        }
+
+        $botToken = $credential->client_secret;
+
+        // Verify the bot is actually in that chat before saving.
+        $response = Http::get("https://api.telegram.org/bot{$botToken}/getChat", [
             'chat_id' => $data['chat_id'],
         ]);
 
@@ -53,7 +82,7 @@ class SocialAccountController extends Controller
 
         if (! $response->successful() || empty($result['ok'])) {
             throw ValidationException::withMessages([
-                'chat_id' => [$result['description'] ?? 'Could not verify this Telegram bot/chat. Make sure the bot is added to the chat/channel as admin.'],
+                'chat_id' => [$result['description'] ?? 'Could not verify this Telegram chat. Make sure the bot is added to the chat/channel as admin.'],
             ]);
         }
 
@@ -68,7 +97,7 @@ class SocialAccountController extends Controller
             ],
             [
                 'account_name' => $data['account_name'] ?? $title,
-                'access_token' => $data['bot_token'],
+                'access_token' => $botToken,
                 'status' => 'connected',
                 'meta' => [
                     'username' => $username,
