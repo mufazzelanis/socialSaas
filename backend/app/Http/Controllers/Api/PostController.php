@@ -138,6 +138,73 @@ class PostController extends Controller
         return response()->json($post->load('platforms.socialAccount'));
     }
 
+    /**
+     * Edit a post's content/media after the fact — mainly for fixing why a
+     * platform failed (e.g. Instagram rejecting a text-only post) so the
+     * user can attach media and retry, without recreating the whole post
+     * and losing the platforms that already succeeded.
+     */
+    public function update(Request $request, Post $post)
+    {
+        abort_unless($post->user_id === $request->user()->id, 403);
+
+        $data = $request->validate([
+            'content' => ['nullable', 'string'],
+            'content_html' => ['nullable', 'string'],
+            'media' => [
+                'nullable',
+                'file',
+                'mimes:jpg,jpeg,png,gif,webp,bmp,'.implode(',', self::VIDEO_EXTENSIONS),
+                function ($attribute, $value, $fail) {
+                    $isVideo = $this->isVideoUpload($value);
+                    $maxKb = $isVideo ? 2097152 : 10240;
+                    if ($value->getSize() > $maxKb * 1024) {
+                        $fail($isVideo
+                            ? 'Videos must be 2GB or smaller.'
+                            : 'Images must be 10MB or smaller.');
+                    }
+                },
+            ],
+            // Lets the "Edit" form clear an attached image/video without
+            // uploading a replacement.
+            'remove_media' => ['sometimes', 'boolean'],
+        ]);
+
+        $updates = [];
+
+        if (array_key_exists('content_html', $data) && $data['content_html'] !== null) {
+            $updates['content'] = $this->htmlToPlainText($data['content_html']);
+        } elseif (array_key_exists('content', $data) && $data['content'] !== null) {
+            $updates['content'] = trim($data['content']);
+        }
+
+        if (isset($updates['content']) && $updates['content'] === '') {
+            abort(422, 'Post content cannot be empty.');
+        }
+
+        if ($request->hasFile('media')) {
+            if ($post->media_path) {
+                Storage::disk('public')->delete($post->media_path);
+            }
+            $file = $request->file('media');
+            $updates['media_path'] = $file->store('posts', 'public');
+            $updates['media_type'] = $this->isVideoUpload($file) ? 'video' : 'image';
+        } elseif ($request->boolean('remove_media')) {
+            if ($post->media_path) {
+                Storage::disk('public')->delete($post->media_path);
+            }
+            $updates['media_path'] = null;
+            $updates['media_type'] = null;
+        }
+
+        if (! empty($updates)) {
+            $post->update($updates);
+            ActivityLogger::log($request->user(), 'post_edited', "Edited post #{$post->id}.", ['post_id' => $post->id]);
+        }
+
+        return response()->json($post->load('platforms.socialAccount'));
+    }
+
     public function retryPlatform(Request $request, Post $post, PostPlatform $postPlatform)
     {
         abort_unless($post->user_id === $request->user()->id, 403);

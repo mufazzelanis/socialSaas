@@ -34,6 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/posts', [PostController::class, 'index']);
     Route::post('/posts', [PostController::class, 'store']);
     Route::get('/posts/{post}', [PostController::class, 'show']);
+    Route::post('/posts/{post}', [PostController::class, 'update']);
     Route::post('/posts/{post}/publish', [PostController::class, 'publish']);
     Route::post('/posts/{post}/platforms/{postPlatform}/retry', [PostController::class, 'retryPlatform']);
     Route::delete('/posts/{post}', [PostController::class, 'destroy']);
