@@ -29,8 +29,10 @@ export default function PostHistory() {
   const [editRemoveMedia, setEditRemoveMedia] = useState(false);
   const [editError, setEditError] = useState('');
 
-  const loadPosts = () => {
-    setLoading(true);
+  // `silent` skips the loading spinner — used after retry/delete/save so the
+  // list just quietly updates in place instead of flashing blank first.
+  const loadPosts = (silent = false) => {
+    if (!silent) setLoading(true);
     api
       .get('/posts')
       .then((res) => setPosts(res.data.data))
@@ -45,7 +47,7 @@ export default function PostHistory() {
     setBusyKey(`${postId}-${platformId}`);
     try {
       await api.post(`/posts/${postId}/platforms/${platformId}/retry`);
-      loadPosts();
+      loadPosts(true);
     } finally {
       setBusyKey(null);
     }
@@ -54,7 +56,7 @@ export default function PostHistory() {
   const deletePost = async (postId) => {
     if (!window.confirm('Delete this post?')) return;
     await api.delete(`/posts/${postId}`);
-    loadPosts();
+    loadPosts(true);
   };
 
   const startEdit = (post) => {
@@ -97,7 +99,7 @@ export default function PostHistory() {
       }
 
       setEditingId(null);
-      loadPosts();
+      loadPosts(true);
     } catch (err) {
       const errors = err.response?.data?.errors;
       const firstError = errors ? Object.values(errors)[0]?.[0] : null;

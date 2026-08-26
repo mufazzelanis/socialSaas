@@ -255,8 +255,10 @@ function UsersPanel({ onViewLoginHistory }) {
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState([]);
 
-  const load = () => {
-    setLoading(true);
+  // `silent` skips the loading spinner — used after any save so the table
+  // just quietly updates in place instead of flashing blank first.
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
     api
       .get('/admin/users')
       .then((res) => setUsers(res.data.data))
@@ -273,7 +275,7 @@ function UsersPanel({ onViewLoginHistory }) {
     setBusyId(user.id);
     try {
       await api.patch(`/admin/users/${user.id}`, { role: newRole });
-      load();
+      load(true);
     } catch (err) {
       alert(err.response?.data?.message || 'Could not update role.');
     } finally {
@@ -291,7 +293,7 @@ function UsersPanel({ onViewLoginHistory }) {
     try {
       await api.patch(`/admin/users/${user.id}`, { allowed_platforms: editDraft });
       setEditingId(null);
-      load();
+      load(true);
     } catch (err) {
       alert(err.response?.data?.message || 'Could not update permissions.');
     } finally {
@@ -314,7 +316,7 @@ function UsersPanel({ onViewLoginHistory }) {
 
       {showCreate && (
         <CreateUserForm
-          onCreated={load}
+          onCreated={() => load(true)}
           onCancel={() => setShowCreate(false)}
         />
       )}
@@ -566,8 +568,10 @@ function CredentialsPanel() {
   const [busyPlatform, setBusyPlatform] = useState(null);
   const [message, setMessage] = useState('');
 
-  const load = () => {
-    setLoading(true);
+  // `silent` skips the loading spinner — used after Save so the form just
+  // quietly updates in place instead of flashing blank first.
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
     api
       .get('/admin/platform-credentials')
       .then((res) => setCredentials(res.data))
@@ -594,7 +598,7 @@ function CredentialsPanel() {
         is_enabled: draft.is_enabled ?? cred.is_enabled,
       });
       setMessage(`${PLATFORM_LABELS[cred.platform]} credentials saved.`);
-      load();
+      load(true);
     } catch (err) {
       setMessage(err.response?.data?.message || 'Could not save credentials.');
     } finally {
@@ -708,8 +712,10 @@ function AdsPanel() {
   const [busyPlacement, setBusyPlacement] = useState(null);
   const [message, setMessage] = useState('');
 
-  const load = () => {
-    setLoading(true);
+  // `silent` skips the loading spinner — used after Save so the form just
+  // quietly updates in place instead of flashing blank first.
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
     api
       .get('/admin/ad-slots')
       .then((res) => setSlots(res.data))
@@ -736,7 +742,7 @@ function AdsPanel() {
         is_enabled: draft.is_enabled ?? slot.is_enabled,
       });
       setMessage(`${AD_PLACEMENT_LABELS[slot.placement]} ad saved.`);
-      load();
+      load(true);
     } catch (err) {
       setMessage(err.response?.data?.message || 'Could not save this ad slot.');
     } finally {

@@ -72,8 +72,10 @@ export default function ConnectAccounts() {
   const [accountName, setAccountName] = useState('');
   const [telegramBot, setTelegramBot] = useState(null);
 
-  const loadAccounts = () => {
-    setLoading(true);
+  // `silent` skips the loading spinner — used after connect/disconnect so
+  // the list just quietly updates in place instead of flashing blank first.
+  const loadAccounts = (silent = false) => {
+    if (!silent) setLoading(true);
     api
       .get('/social-accounts')
       .then((res) => setAccounts(res.data))
@@ -102,7 +104,7 @@ export default function ConnectAccounts() {
       setSuccess('Telegram account connected successfully.');
       setChatId('');
       setAccountName('');
-      loadAccounts();
+      loadAccounts(true);
     } catch (err) {
       const errors = err.response?.data?.errors;
       const firstError = errors ? Object.values(errors)[0]?.[0] : null;
@@ -126,7 +128,7 @@ export default function ConnectAccounts() {
   const handleDisconnect = async (id) => {
     if (!window.confirm('Disconnect this account?')) return;
     await api.delete(`/social-accounts/${id}`);
-    loadAccounts();
+    loadAccounts(true);
   };
 
   return (
