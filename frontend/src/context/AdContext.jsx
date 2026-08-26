@@ -18,7 +18,7 @@ export function AdProvider({ children }) {
       .then((res) => {
         const map = {};
         (res.data || []).forEach((slot) => {
-          map[slot.placement] = slot.code;
+          map[slot.placement] = { code: slot.code, noVisibleOutput: !!slot.no_visible_output };
         });
         setAds(map);
       })

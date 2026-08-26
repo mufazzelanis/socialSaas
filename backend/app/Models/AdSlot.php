@@ -10,6 +10,7 @@ class AdSlot extends Model
         'placement',
         'network',
         'code',
+        'no_visible_output',
         'is_enabled',
         'updated_by',
     ];
@@ -18,6 +19,7 @@ class AdSlot extends Model
     {
         return [
             'is_enabled' => 'boolean',
+            'no_visible_output' => 'boolean',
         ];
     }
 

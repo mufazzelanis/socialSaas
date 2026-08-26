@@ -19,7 +19,7 @@ class AdSlotController extends Controller
             ->where('is_enabled', true)
             ->whereNotNull('code')
             ->where('code', '!=', '')
-            ->get(['placement', 'code']);
+            ->get(['placement', 'code', 'no_visible_output']);
 
         return response()->json($slots);
     }

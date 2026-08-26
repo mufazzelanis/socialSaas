@@ -37,6 +37,7 @@ class AdSlotController extends Controller
             // run a few thousand characters, but this still keeps someone
             // from pasting something absurd in by mistake.
             'code' => ['nullable', 'string', 'max:20000'],
+            'no_visible_output' => ['sometimes', 'boolean'],
             'is_enabled' => ['sometimes', 'boolean'],
         ]);
 
@@ -48,6 +49,10 @@ class AdSlotController extends Controller
 
         if (array_key_exists('code', $data)) {
             $slot->code = $data['code'];
+        }
+
+        if (array_key_exists('no_visible_output', $data)) {
+            $slot->no_visible_output = $data['no_visible_output'];
         }
 
         if (array_key_exists('is_enabled', $data)) {

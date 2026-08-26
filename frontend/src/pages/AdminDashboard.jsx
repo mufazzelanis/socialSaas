@@ -732,6 +732,7 @@ function AdsPanel() {
       await api.post(`/admin/ad-slots/${slot.placement}`, {
         network: draft.network ?? slot.network,
         code: draft.code ?? slot.code ?? '',
+        no_visible_output: draft.no_visible_output ?? slot.no_visible_output,
         is_enabled: draft.is_enabled ?? slot.is_enabled,
       });
       setMessage(`${AD_PLACEMENT_LABELS[slot.placement]} ad saved.`);
@@ -800,6 +801,16 @@ function AdsPanel() {
                 placeholder={'<ins class="adsbygoogle" ...></ins>\n<script>...</script>'}
                 spellCheck={false}
               />
+            </label>
+
+            <label className="toggle mb-3.5">
+              <input
+                type="checkbox"
+                checked={draft.no_visible_output ?? slot.no_visible_output ?? false}
+                onChange={(e) => setDraft(slot.placement, 'no_visible_output', e.target.checked)}
+              />
+              This ad has no visible box (Adsterra Social Bar / Popunder / Direct Link) — don't
+              auto-hide it
             </label>
 
             <button
