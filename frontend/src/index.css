@@ -717,6 +717,12 @@
   .ad-slot--sidebar .ad-slot-label {
     @apply text-white/40;
   }
+  .ad-slot-link-btn {
+    @apply inline-flex items-center gap-1.5 border border-border rounded-full px-4 py-1.5 text-[0.82rem] font-medium text-text transition-colors;
+  }
+  .ad-slot-link-btn:hover {
+    @apply bg-bg border-primary/40 no-underline;
+  }
 
   /* ---------------- Admin: Ads panel ---------------- */
   .ad-slot-card {

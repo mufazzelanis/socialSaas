@@ -59,10 +59,21 @@ async function runAdCode(container, code) {
   }
 }
 
+// Adsterra's "Direct Link" format (and some other networks' simplest tier)
+// isn't a script at all — it's just a bare URL the admin is meant to paste
+// somewhere as a link. Dropped straight into the page as-is, that shows up
+// as raw, unstyled link text (ugly, and confusing since it looks broken).
+// Detected here and rendered as a proper small button instead.
+function bareUrl(code) {
+  const trimmed = code.trim();
+  return !trimmed.includes('<') && /^https?:\/\/\S+$/i.test(trimmed) ? trimmed : null;
+}
+
 export default function AdSlot({ placement, className = '' }) {
   const { getAd } = useAds();
   const ad = getAd(placement);
   const code = ad?.code || null;
+  const directUrl = code ? bareUrl(code) : null;
   const containerRef = useRef(null);
   // Optimistic until proven empty — an ad network (most commonly AdSense
   // before the site is approved) can return no fill at all, which would
@@ -74,7 +85,7 @@ export default function AdSlot({ placement, className = '' }) {
   useEffect(() => {
     setHasFill(true);
     const container = containerRef.current;
-    if (!code || !container) return undefined;
+    if (!code || !container || directUrl) return undefined;
 
     let cancelled = false;
     container.innerHTML = '';
@@ -93,9 +104,20 @@ export default function AdSlot({ placement, className = '' }) {
       cancelled = true;
       container.innerHTML = '';
     };
-  }, [code, ad?.noVisibleOutput]);
+  }, [code, directUrl, ad?.noVisibleOutput]);
 
   if (!code || !hasFill) return null;
+
+  if (directUrl) {
+    return (
+      <div className={`ad-slot ${className}`}>
+        <span className="ad-slot-label">Advertisement</span>
+        <a href={directUrl} target="_blank" rel="noopener noreferrer sponsored" className="ad-slot-link-btn">
+          View Offer
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className={`ad-slot ${className}`}>
