@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { trackPixelEvent } from '../lib/pixel';
 
 export default function Register() {
   const { register } = useAuth();
@@ -19,6 +20,7 @@ export default function Register() {
     setBusy(true);
     try {
       await register(name, email, password, passwordConfirmation, phone);
+      trackPixelEvent('CompleteRegistration');
       navigate('/');
     } catch (err) {
       const errors = err.response?.data?.errors;

@@ -6,6 +6,7 @@ import { AdProvider } from './context/AdContext';
 import { SiteSettingProvider } from './context/SiteSettingContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import FacebookPixel from './components/FacebookPixel';
 import Login from './pages/Login';
 
 // Every other page is loaded on demand — an unauthenticated visit (Login,
@@ -33,6 +34,7 @@ export default function App() {
         <BrandProvider>
           <AdProvider>
             <SiteSettingProvider>
+              <FacebookPixel />
               <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/login" element={<Login />} />

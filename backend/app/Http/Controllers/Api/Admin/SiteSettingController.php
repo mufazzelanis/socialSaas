@@ -13,6 +13,9 @@ class SiteSettingController extends Controller
         $data = $request->validate([
             'telegram_channel_url' => ['nullable', 'string', 'max:255'],
             'telegram_button_enabled' => ['sometimes', 'boolean'],
+            // Meta Pixel IDs are 15-16 digit numbers.
+            'facebook_pixel_id' => ['nullable', 'string', 'max:32', 'regex:/^\d+$/'],
+            'facebook_pixel_enabled' => ['sometimes', 'boolean'],
         ]);
 
         $setting = SiteSetting::current();

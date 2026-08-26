@@ -28,6 +28,13 @@ Route::middleware('throttle:auth')->group(function () {
 // approves/denies access — no Sanctum token is attached to that request.
 Route::get('/social-accounts/oauth/{platform}/callback', [SocialOAuthController::class, 'callback']);
 
+// Public: nothing here is sensitive (a Telegram channel link, a Meta Pixel
+// ID — pixel IDs are sent in the client-side script itself either way).
+// Needs to be reachable *before* login so the pixel loads and tracks
+// PageView on the login/register pages too, not just once someone's
+// already signed in.
+Route::get('/site-settings', [SiteSettingController::class, 'show']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -50,7 +57,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/brand-settings', [BrandSettingController::class, 'show']);
     Route::get('/ad-slots', [AdSlotController::class, 'index']);
     Route::get('/services', [ServiceController::class, 'index']);
-    Route::get('/site-settings', [SiteSettingController::class, 'show']);
 
     Route::middleware('super_admin')->prefix('admin')->group(function () {
         Route::get('/users', [AdminUserController::class, 'index']);

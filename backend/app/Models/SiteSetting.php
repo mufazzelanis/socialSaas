@@ -9,6 +9,8 @@ class SiteSetting extends Model
     protected $fillable = [
         'telegram_channel_url',
         'telegram_button_enabled',
+        'facebook_pixel_id',
+        'facebook_pixel_enabled',
         'updated_by',
     ];
 
@@ -16,6 +18,7 @@ class SiteSetting extends Model
     {
         return [
             'telegram_button_enabled' => 'boolean',
+            'facebook_pixel_enabled' => 'boolean',
         ];
     }
 

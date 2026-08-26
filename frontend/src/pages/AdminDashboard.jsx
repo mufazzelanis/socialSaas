@@ -838,9 +838,90 @@ function AdsPanel() {
 function PromotePanel() {
   return (
     <>
+      <FacebookPixelPanel />
       <TelegramButtonPanel />
       <ServicesPanel />
     </>
+  );
+}
+
+function FacebookPixelPanel() {
+  const [settings, setSettings] = useState(null);
+  const [pixelId, setPixelId] = useState('');
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  const load = () => {
+    api.get('/site-settings').then((res) => {
+      setSettings(res.data);
+      setPixelId(res.data.facebook_pixel_id || '');
+      setEnabled(!!res.data.facebook_pixel_enabled);
+    });
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const save = async () => {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await api.post('/admin/site-settings', {
+        facebook_pixel_id: pixelId,
+        facebook_pixel_enabled: enabled,
+      });
+      setMessage('Facebook Pixel saved.');
+      load();
+    } catch (err) {
+      const errors = err.response?.data?.errors;
+      const firstError = errors ? Object.values(errors)[0]?.[0] : null;
+      setError(firstError || err.response?.data?.message || 'Could not save.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!settings) return <p>Loading...</p>;
+
+  return (
+    <div className="card">
+      <h2>Facebook Pixel</h2>
+      <p className="muted">
+        Loads Meta's tracking pixel on every page — including the logged-out Login/Register
+        screens, so ad campaigns can measure the full signup funnel. Fires a{' '}
+        <code>PageView</code> on every page, plus <code>CompleteRegistration</code> on signup and{' '}
+        <code>Lead</code> whenever someone clicks a service's "Contact on WhatsApp" button.
+      </p>
+
+      {error && <div className="alert alert-error">{error}</div>}
+      {message && <div className="alert alert-info">{message}</div>}
+
+      <label className="field">
+        <span>Pixel ID</span>
+        <input
+          value={pixelId}
+          onChange={(e) => setPixelId(e.target.value)}
+          placeholder="123456789012345"
+          inputMode="numeric"
+        />
+        <span className="muted small">
+          Found in Meta Events Manager → Data Sources → your pixel → Settings.
+        </span>
+      </label>
+
+      <label className="toggle mb-3.5">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        Enable the pixel site-wide
+      </label>
+
+      <button className="btn btn-primary btn-small" disabled={busy} onClick={save}>
+        {busy ? 'Saving...' : 'Save'}
+      </button>
+    </div>
   );
 }
 

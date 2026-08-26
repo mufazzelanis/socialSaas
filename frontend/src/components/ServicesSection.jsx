@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
+import { trackPixelEvent } from '../lib/pixel';
 import BrandIcon from './BrandIcon';
 import Icon from './Icon';
 
@@ -20,7 +21,10 @@ function WhatsAppButton({ service, className = 'btn btn-primary btn-block' }) {
       target="_blank"
       rel="noopener noreferrer"
       className={`whatsapp-btn ${className}`}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        trackPixelEvent('Lead', { content_name: service.title });
+      }}
     >
       <BrandIcon name="whatsapp" size={16} />
       Contact on WhatsApp
