@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAds } from '../context/AdContext';
 
 // Recursively clones a parsed DOM node into a fresh, live node. This exists
@@ -34,8 +34,13 @@ export default function AdSlot({ placement, className = '' }) {
   const { getAd } = useAds();
   const code = getAd(placement);
   const containerRef = useRef(null);
+  // Optimistic until proven empty — an ad network (most commonly AdSense
+  // before the site is approved) can return no fill at all, which would
+  // otherwise leave a bare "Advertisement" label floating over nothing.
+  const [hasFill, setHasFill] = useState(true);
 
   useEffect(() => {
+    setHasFill(true);
     const container = containerRef.current;
     if (!code || !container) return undefined;
 
@@ -47,12 +52,19 @@ export default function AdSlot({ placement, className = '' }) {
       if (cloned) container.appendChild(cloned);
     });
 
+    // Ad scripts render asynchronously (often into an iframe added a moment
+    // later), so give it a few seconds before deciding nothing showed up.
+    const timer = setTimeout(() => {
+      if (container.offsetHeight < 2) setHasFill(false);
+    }, 3000);
+
     return () => {
+      clearTimeout(timer);
       container.innerHTML = '';
     };
   }, [code]);
 
-  if (!code) return null;
+  if (!code || !hasFill) return null;
 
   return (
     <div className={`ad-slot ${className}`}>
