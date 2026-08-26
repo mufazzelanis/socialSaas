@@ -31,11 +31,6 @@ class User extends Authenticatable
         return $this->hasMany(Post::class);
     }
 
-    public function brandSetting()
-    {
-        return $this->hasOne(BrandSetting::class);
-    }
-
     public function activityLogs()
     {
         return $this->hasMany(ActivityLog::class);

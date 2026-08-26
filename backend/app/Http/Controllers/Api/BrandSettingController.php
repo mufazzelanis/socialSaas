@@ -12,12 +12,7 @@ class BrandSettingController extends Controller
 {
     public function show(Request $request)
     {
-        $setting = $request->user()->brandSetting ?? new BrandSetting([
-            'brand_name' => 'Social SaaS',
-            'primary_color' => '#4f46e5',
-        ]);
-
-        return response()->json($setting);
+        return response()->json(BrandSetting::current());
     }
 
     public function update(Request $request)
@@ -31,7 +26,7 @@ class BrandSettingController extends Controller
             'remove_favicon' => ['sometimes', 'boolean'],
         ]);
 
-        $setting = $request->user()->brandSetting()->firstOrCreate([]);
+        $setting = BrandSetting::current();
 
         if ($request->boolean('remove_logo') && $setting->logo_path) {
             Storage::disk('public')->delete($setting->logo_path);
@@ -65,6 +60,7 @@ class BrandSettingController extends Controller
             $setting->primary_color = $data['primary_color'];
         }
 
+        $setting->updated_by = $request->user()->id;
         $setting->save();
 
         ActivityLogger::log($request->user(), 'branding_updated', 'Updated branding settings.');

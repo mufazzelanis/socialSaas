@@ -10,7 +10,7 @@ class BrandSetting extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
+        'updated_by',
         'brand_name',
         'logo_path',
         'favicon_path',
@@ -22,9 +22,18 @@ class BrandSetting extends Model
         'favicon_url',
     ];
 
-    public function user()
+    /**
+     * There's always exactly one settings row — branding is site-wide (every
+     * user's dashboard shows the same logo/favicon/color), not per-user.
+     */
+    public static function current(): self
     {
-        return $this->belongsTo(User::class);
+        return static::firstOrCreate(['id' => 1]);
+    }
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
     public function getLogoUrlAttribute(): ?string
