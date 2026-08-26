@@ -25,7 +25,7 @@ function initials(name) {
 
 function BrandMark({ brand, compact }) {
   if (brand.logo_url) {
-    return <img src={brand.logo_url} alt={brand.brand_name} className={compact ? 'max-h-7 max-w-full object-contain' : 'sidebar-brand-logo'} />;
+    return <img src={brand.logo_url} alt={brand.brand_name} className={compact ? 'max-h-10 w-auto max-w-full object-contain' : 'sidebar-brand-logo'} />;
   }
   return <span className={compact ? 'truncate' : 'sidebar-brand-name'}>{brand.brand_name}</span>;
 }

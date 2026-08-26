@@ -131,7 +131,7 @@
     @apply flex items-center gap-2.5 text-white font-bold text-lg px-3 pt-2 pb-6 overflow-hidden;
   }
   .sidebar-brand-logo {
-    @apply max-h-8 max-w-full object-contain;
+    @apply max-h-14 w-auto max-w-full object-contain;
   }
   .sidebar-brand-name {
     @apply whitespace-nowrap overflow-hidden text-ellipsis;

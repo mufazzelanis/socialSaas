@@ -113,7 +113,11 @@ export default function Settings() {
         <div className="upload-grid">
           <div className="upload-box">
             <h3>Logo</h3>
-            <p className="upload-hint">Shown in the sidebar. PNG/SVG/WebP, up to 2MB.</p>
+            <p className="upload-hint">
+              Shown in the sidebar (and mobile header). PNG/SVG/WebP, up to 2MB. Renders up to
+              56px tall — a wide logo with transparent background looks best; a tiny/low-res
+              image will look small or blurry no matter what.
+            </p>
             <div className="upload-preview">
               {logoPreview ? (
                 <img src={logoPreview} alt="Logo preview" />
@@ -136,7 +140,12 @@ export default function Settings() {
 
           <div className="upload-box">
             <h3>Favicon</h3>
-            <p className="upload-hint">Shown in the browser tab. PNG/ICO/SVG, up to 512KB.</p>
+            <p className="upload-hint">
+              Shown in the browser tab. PNG/ICO/SVG, up to 512KB. Browsers shrink this down to
+              roughly 16–32px, so use a simple, square, high-contrast image (a plain icon or
+              monogram works far better than a detailed logo, which turns into a blur that
+              small).
+            </p>
             <div className="upload-preview favicon-preview">
               {faviconPreview ? (
                 <img src={faviconPreview} alt="Favicon preview" />
