@@ -22,7 +22,18 @@ function applyToDocument(brand) {
     link.rel = 'icon';
     document.head.appendChild(link);
   }
-  link.href = brand.favicon_url || '/vite.svg';
+  link.href = brand.favicon_url || '/favicon.svg';
+
+  // index.html's tag ships with type="image/svg+xml" for the default
+  // favicon.svg — a browser that respects a declared type strictly will
+  // silently refuse to show an uploaded PNG/JPG/ICO through that same
+  // stale type, so it must be cleared (or set correctly) whenever the
+  // href changes to something else.
+  if (brand.favicon_url) {
+    link.removeAttribute('type');
+  } else {
+    link.type = 'image/svg+xml';
+  }
 
   // Keeps the mobile browser chrome / PWA status bar tinted to the tenant's
   // brand color, so an installed app matches their branding too.
