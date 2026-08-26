@@ -42,6 +42,27 @@
   }
 }
 
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes float-blob {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(4%, 6%) scale(1.08);
+  }
+  66% {
+    transform: translate(-3%, -4%) scale(0.95);
+  }
+}
+
 /* ------------------------------------------------------------------ *
  * Base
  * ------------------------------------------------------------------ */
@@ -140,13 +161,13 @@
     @apply flex flex-col gap-0.5;
   }
   .sidebar-link {
-    @apply flex items-center gap-2.5 text-sidebar-text px-3 py-2.5 rounded-lg text-[0.92rem] transition-colors;
+    @apply flex items-center gap-2.5 text-sidebar-text px-3 py-2.5 rounded-lg text-[0.92rem] transition-all duration-200;
   }
   .sidebar-link:hover {
-    @apply bg-white/10 no-underline text-white;
+    @apply bg-white/10 no-underline text-white translate-x-0.5;
   }
   .sidebar-link.active {
-    @apply bg-primary text-white;
+    @apply bg-primary text-white shadow-md;
   }
   .sidebar-divider {
     @apply border-t border-white/10 my-2.5 mx-2;
@@ -206,7 +227,7 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
   .bottom-nav-link {
-    @apply flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-text-muted text-[0.68rem] font-medium transition-colors;
+    @apply flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-text-muted text-[0.68rem] font-medium transition-colors active:scale-90 duration-200;
   }
   .bottom-nav-link:hover {
     @apply no-underline text-text-muted;
@@ -214,10 +235,31 @@
   .bottom-nav-link.active {
     @apply text-primary;
   }
+  .bottom-nav-link.active svg {
+    animation: nav-pop 0.3s ease-out;
+  }
+  @keyframes nav-pop {
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.35);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
 
   /* ---------------- Cards ---------------- */
   .card {
-    @apply bg-surface border border-border rounded-2xl p-4 sm:p-5 mb-5 shadow-sm;
+    @apply bg-surface border border-border rounded-2xl p-4 sm:p-5 mb-5 shadow-sm transition-all duration-300 animate-in;
+  }
+  /* Hover lift only where a fine pointer is available — never fires from a
+     mobile tap, so it can't leave a card looking "stuck" mid-lift there. */
+  @media (hover: hover) {
+    .card:hover {
+      @apply shadow-md -translate-y-0.5 border-primary/20;
+    }
   }
   .muted-card {
     @apply bg-neutral-50;
@@ -353,11 +395,40 @@
 
   /* ---------------- Auth pages ---------------- */
   .auth-page {
-    @apply min-h-screen flex items-center justify-center p-4;
-    background: linear-gradient(135deg, var(--primary), #14151a);
+    @apply min-h-screen flex items-center justify-center p-4 relative overflow-hidden;
+    background: linear-gradient(-45deg, var(--primary), #14151a, #4f1d9e, var(--primary));
+    background-size: 400% 400%;
+    animation: gradient-shift 12s ease infinite;
+  }
+  /* Soft floating blobs drifting behind the card — pure decoration, sits
+     under everything (z-index 0) and never intercepts clicks. */
+  .auth-page::before,
+  .auth-page::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    border-radius: 9999px;
+    filter: blur(60px);
+    background: rgb(255 255 255 / 0.16);
+    pointer-events: none;
+  }
+  .auth-page::before {
+    width: 22rem;
+    height: 22rem;
+    top: -6rem;
+    left: -6rem;
+    animation: float-blob 14s ease-in-out infinite;
+  }
+  .auth-page::after {
+    width: 26rem;
+    height: 26rem;
+    bottom: -8rem;
+    right: -8rem;
+    background: rgb(79 70 229 / 0.25);
+    animation: float-blob 18s ease-in-out infinite reverse;
   }
   .auth-card {
-    @apply bg-surface rounded-2xl p-7 sm:p-9 w-full max-w-[380px] shadow-2xl animate-in;
+    @apply bg-surface rounded-2xl p-7 sm:p-9 w-full max-w-[380px] shadow-2xl animate-in relative z-10;
   }
   .auth-subtitle {
     @apply text-text-muted mb-5 text-[0.9rem];
@@ -370,7 +441,10 @@
   }
 
   .page-loading {
-    @apply p-10 text-center text-text-muted;
+    @apply p-10 flex flex-col items-center justify-center gap-3 text-text-muted;
+  }
+  .page-loading-spinner {
+    @apply w-8 h-8 rounded-full border-[3px] border-border border-t-primary animate-spin;
   }
 
   /* ---------------- Badges / status ---------------- */
@@ -701,7 +775,10 @@
   }
 
   .avatar-initials {
-    @apply w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-[0.8rem] font-bold shrink-0;
+    @apply w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-[0.8rem] font-bold shrink-0 transition-transform duration-200;
+  }
+  a:hover > .avatar-initials {
+    @apply scale-110;
   }
 
   /* ---------------- Ad slots ---------------- */

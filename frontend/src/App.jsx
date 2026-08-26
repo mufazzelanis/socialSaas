@@ -24,7 +24,12 @@ const Profile = lazy(() => import('./pages/Profile'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 
 function RouteFallback() {
-  return <div className="page-loading">Loading...</div>;
+  return (
+    <div className="page-loading">
+      <span className="page-loading-spinner" />
+      Loading...
+    </div>
+  );
 }
 
 export default function App() {
