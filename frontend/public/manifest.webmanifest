@@ -1,0 +1,25 @@
+{
+  "name": "Social SaaS",
+  "short_name": "Social SaaS",
+  "description": "Write once, publish everywhere — manage and schedule posts across Facebook, Instagram, LinkedIn and Telegram.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f5f7",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

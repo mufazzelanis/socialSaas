@@ -13,7 +13,8 @@ const BrandContext = createContext(null);
 
 function applyToDocument(brand) {
   document.title = brand.brand_name || DEFAULTS.brand_name;
-  document.documentElement.style.setProperty('--primary', brand.primary_color || DEFAULTS.primary_color);
+  const color = brand.primary_color || DEFAULTS.primary_color;
+  document.documentElement.style.setProperty('--primary', color);
 
   let link = document.querySelector("link[rel~='icon']");
   if (!link) {
@@ -22,6 +23,16 @@ function applyToDocument(brand) {
     document.head.appendChild(link);
   }
   link.href = brand.favicon_url || '/vite.svg';
+
+  // Keeps the mobile browser chrome / PWA status bar tinted to the tenant's
+  // brand color, so an installed app matches their branding too.
+  let themeColor = document.querySelector("meta[name='theme-color']");
+  if (!themeColor) {
+    themeColor = document.createElement('meta');
+    themeColor.name = 'theme-color';
+    document.head.appendChild(themeColor);
+  }
+  themeColor.content = color;
 }
 
 export function BrandProvider({ children }) {
