@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
+import AdSlot from '../components/AdSlot';
 import api from '../api/client';
 
 const PLATFORM_LABELS = {
@@ -110,6 +111,8 @@ export default function PostHistory() {
     <Layout>
       <h1>Post History</h1>
       <p className="page-subtitle">Track every post across every platform.</p>
+
+      <AdSlot placement="post_history" />
 
       {loading ? (
         <p>Loading...</p>

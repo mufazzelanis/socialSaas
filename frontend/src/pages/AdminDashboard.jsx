@@ -6,7 +6,23 @@ const TABS = [
   { key: 'users', label: 'Users' },
   { key: 'activity', label: 'Activity Logs' },
   { key: 'credentials', label: 'Platform Credentials' },
+  { key: 'ads', label: 'Ads' },
 ];
+
+const AD_PLACEMENT_LABELS = {
+  dashboard_top: 'Dashboard — top banner',
+  sidebar: 'Sidebar (desktop)',
+  post_history: 'Post History — top banner',
+  create_post: 'Create Post — below preview',
+  global_footer: 'Every page — bottom of content',
+};
+
+const AD_NETWORKS = ['adsense', 'adsterra', 'custom'];
+const AD_NETWORK_LABELS = {
+  adsense: 'Google AdSense',
+  adsterra: 'Adsterra',
+  custom: 'Custom / other',
+};
 
 const ALL_PLATFORMS = ['telegram', 'facebook', 'instagram', 'linkedin'];
 
@@ -59,7 +75,7 @@ export default function AdminDashboard() {
   return (
     <Layout>
       <h1>Admin</h1>
-      <p className="page-subtitle">Super admin only — users, activity, and platform credentials.</p>
+      <p className="page-subtitle">Super admin only — users, activity, platform credentials, and ads.</p>
 
       <div className="admin-tabs">
         {TABS.map((t) => (
@@ -82,6 +98,7 @@ export default function AdminDashboard() {
         />
       )}
       {tab === 'credentials' && <CredentialsPanel />}
+      {tab === 'ads' && <AdsPanel />}
     </Layout>
   );
 }
@@ -680,6 +697,121 @@ function CredentialsPanel() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function AdsPanel() {
+  const [slots, setSlots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState({});
+  const [busyPlacement, setBusyPlacement] = useState(null);
+  const [message, setMessage] = useState('');
+
+  const load = () => {
+    setLoading(true);
+    api
+      .get('/admin/ad-slots')
+      .then((res) => setSlots(res.data))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const setDraft = (placement, field, value) => {
+    setDrafts((d) => ({ ...d, [placement]: { ...d[placement], [field]: value } }));
+  };
+
+  const save = async (slot) => {
+    const draft = drafts[slot.placement] || {};
+    setBusyPlacement(slot.placement);
+    setMessage('');
+    try {
+      await api.post(`/admin/ad-slots/${slot.placement}`, {
+        network: draft.network ?? slot.network,
+        code: draft.code ?? slot.code ?? '',
+        is_enabled: draft.is_enabled ?? slot.is_enabled,
+      });
+      setMessage(`${AD_PLACEMENT_LABELS[slot.placement]} ad saved.`);
+      load();
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Could not save this ad slot.');
+    } finally {
+      setBusyPlacement(null);
+    }
+  };
+
+  if (loading) return <p>Loading...</p>;
+
+  return (
+    <div className="card">
+      <h2>Ad Slots</h2>
+      <p className="muted">
+        Paste your Google AdSense ad-unit code or Adsterra embed code (or any other ad network's
+        script) into a slot below and enable it — it renders live for every logged-in user on
+        that page. Leave a slot's code empty and disabled to hide it. Ads are your own revenue
+        integration; keep the codes and account usage compliant with each network's policies
+        (e.g. never ask or incentivize users to click).
+      </p>
+
+      {message && <div className="alert alert-info">{message}</div>}
+
+      {slots.map((slot) => {
+        const draft = drafts[slot.placement] || {};
+        return (
+          <div className="ad-slot-card" key={slot.placement}>
+            <div className="ad-slot-header">
+              <div>
+                <strong>{AD_PLACEMENT_LABELS[slot.placement] || slot.placement}</strong>
+              </div>
+              <label className="toggle">
+                <input
+                  type="checkbox"
+                  checked={draft.is_enabled ?? slot.is_enabled}
+                  onChange={(e) => setDraft(slot.placement, 'is_enabled', e.target.checked)}
+                />
+                Enabled
+              </label>
+            </div>
+
+            <label className="field">
+              <span>Ad Network</span>
+              <select
+                value={draft.network ?? slot.network ?? 'custom'}
+                onChange={(e) => setDraft(slot.placement, 'network', e.target.value)}
+              >
+                {AD_NETWORKS.map((n) => (
+                  <option key={n} value={n}>
+                    {AD_NETWORK_LABELS[n]}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Embed Code</span>
+              <textarea
+                className="ad-slot-code"
+                rows={5}
+                value={draft.code ?? slot.code ?? ''}
+                onChange={(e) => setDraft(slot.placement, 'code', e.target.value)}
+                placeholder={'<ins class="adsbygoogle" ...></ins>\n<script>...</script>'}
+                spellCheck={false}
+              />
+            </label>
+
+            <button
+              className="btn btn-primary btn-small"
+              disabled={busyPlacement === slot.placement}
+              onClick={() => save(slot)}
+            >
+              {busyPlacement === slot.placement ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

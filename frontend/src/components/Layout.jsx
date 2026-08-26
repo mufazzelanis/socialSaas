@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBrand } from '../context/BrandContext';
 import Icon from './Icon';
+import AdSlot from './AdSlot';
 
 // Every user gets these five, including Profile — branding ("Settings") is a
 // super-admin-only capability and is appended separately below, alongside
@@ -101,10 +102,11 @@ export default function Layout({ children }) {
         <div className="sidebar-brand">
           <BrandMark brand={brand} />
         </div>
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav flex-1">
           {navItems.map((item) => renderNavLink(item))}
           {renderAdminExtras()}
         </nav>
+        <AdSlot placement="sidebar" className="ad-slot--sidebar" />
       </aside>
 
       {/* Mobile drawer + overlay */}
@@ -160,7 +162,10 @@ export default function Layout({ children }) {
             </button>
           </div>
         </header>
-        <main className="content">{children}</main>
+        <main className="content">
+          {children}
+          <AdSlot placement="global_footer" />
+        </main>
       </div>
 
       {/* Bottom tab bar (mobile only) */}

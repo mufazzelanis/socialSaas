@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import AdSlot from '../components/AdSlot';
 import api from '../api/client';
 import RichTextEditor from '../components/RichTextEditor';
 
@@ -191,6 +192,8 @@ export default function CreatePost() {
             render rich text in posts, so what actually publishes is clean plain text with your
             line breaks kept.
           </p>
+
+          <AdSlot placement="create_post" />
         </div>
       </div>
     </Layout>

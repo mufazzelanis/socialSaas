@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\ActivityLogController;
+use App\Http\Controllers\Api\Admin\AdSlotController as AdminAdSlotController;
 use App\Http\Controllers\Api\Admin\PlatformCredentialController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Api\AdSlotController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandSettingController;
 use App\Http\Controllers\Api\PostController;
@@ -42,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/posts/{post}', [PostController::class, 'destroy']);
 
     Route::get('/brand-settings', [BrandSettingController::class, 'show']);
+    Route::get('/ad-slots', [AdSlotController::class, 'index']);
 
     Route::middleware('super_admin')->prefix('admin')->group(function () {
         Route::get('/users', [AdminUserController::class, 'index']);
@@ -52,6 +55,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/platform-credentials', [PlatformCredentialController::class, 'index']);
         Route::post('/platform-credentials/{platform}', [PlatformCredentialController::class, 'update']);
+
+        Route::get('/ad-slots', [AdminAdSlotController::class, 'index']);
+        Route::post('/ad-slots/{placement}', [AdminAdSlotController::class, 'update']);
     });
 
     // Branding is a super-admin-only customization (logo/favicon/color for

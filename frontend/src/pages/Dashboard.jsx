@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import AdSlot from '../components/AdSlot';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 
@@ -21,6 +22,8 @@ export default function Dashboard() {
     <Layout>
       <h1>Good day, {user?.name?.split(' ')[0]} 👋</h1>
       <p className="page-subtitle">Here's what's happening with your social posts.</p>
+
+      <AdSlot placement="dashboard_top" />
 
       <div className="stat-grid">
         <div className="card stat-card">
