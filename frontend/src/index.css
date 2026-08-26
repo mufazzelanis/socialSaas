@@ -758,41 +758,60 @@
 
   /* ---------------- Services showcase ---------------- */
   .service-grid {
-    @apply grid gap-4;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    @apply grid gap-5;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   }
   .service-card {
-    @apply border border-border rounded-2xl overflow-hidden flex flex-col;
+    @apply border border-border rounded-2xl overflow-hidden flex flex-col bg-surface shadow-sm transition-all;
+  }
+  .service-card:hover {
+    @apply shadow-lg -translate-y-1 border-primary/30;
   }
   .service-card-image {
-    @apply block w-full aspect-[4/3] bg-bg border-none p-0 cursor-pointer overflow-hidden;
+    /* object-contain (not cover) + a soft tinted backdrop — promo graphics
+       come in whatever aspect ratio the admin's designer used, and cropping
+       one to fit a fixed box cuts off exactly the text/price that's meant
+       to sell the offer. Padding it in full never loses content. */
+    @apply block w-full aspect-square border-none p-2.5 cursor-pointer overflow-hidden;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 10%, white), color-mix(in srgb, var(--primary) 3%, white));
   }
   .service-card-image img {
-    @apply w-full h-full object-cover transition-transform;
+    @apply w-full h-full object-contain rounded-lg transition-transform duration-300;
+    filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.12));
   }
   .service-card-image:hover img {
-    @apply scale-105;
+    @apply scale-[1.04];
   }
   .service-card-image-empty {
     @apply w-full h-full flex items-center justify-center text-3xl font-bold text-text-muted/40;
   }
   .service-card-body {
-    @apply p-3.5 flex flex-col gap-2 flex-1;
+    @apply p-4 flex flex-col gap-2 flex-1;
   }
   .service-card-title {
-    @apply text-left bg-transparent border-none p-0 cursor-pointer font-semibold text-text text-[0.95rem];
+    @apply text-left bg-transparent border-none p-0 cursor-pointer font-bold text-text text-[1rem] leading-snug;
   }
   .service-card-title:hover {
     @apply text-primary underline;
   }
 
   .whatsapp-btn {
-    @apply inline-flex items-center justify-center gap-1.5 mt-auto;
+    @apply inline-flex items-center justify-center gap-1.5 mt-auto font-semibold shadow-md;
     background: #25d366 !important;
     color: #fff !important;
+    animation: whatsapp-pulse 2.2s ease-in-out infinite;
   }
   .whatsapp-btn:hover {
     filter: brightness(0.95);
+    animation-play-state: paused;
+  }
+  @keyframes whatsapp-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgb(37 211 102 / 0.45);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgb(37 211 102 / 0);
+    }
   }
 
   /* ---------------- Modal (service details) ---------------- */
@@ -807,7 +826,8 @@
     @apply absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-bg hover:text-text transition-colors;
   }
   .modal-image {
-    @apply w-full aspect-[4/3] object-cover rounded-xl mb-3.5;
+    @apply w-full aspect-square object-contain rounded-xl mb-3.5 p-2;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 10%, white), color-mix(in srgb, var(--primary) 3%, white));
   }
   .modal-details {
     @apply whitespace-pre-wrap text-text-muted mb-4;
