@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandSettingController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SocialAccountController;
 use App\Http\Controllers\Api\SocialOAuthController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,7 @@ Route::get('/social-accounts/oauth/{platform}/callback', [SocialOAuthController:
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::patch('/profile', [ProfileController::class, 'update']);
 
     Route::get('/social-accounts', [SocialAccountController::class, 'index']);
     Route::get('/social-accounts/telegram-bot-info', [SocialAccountController::class, 'telegramBotInfo']);
@@ -40,7 +42,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/posts/{post}', [PostController::class, 'destroy']);
 
     Route::get('/brand-settings', [BrandSettingController::class, 'show']);
-    Route::post('/brand-settings', [BrandSettingController::class, 'update']);
 
     Route::middleware('super_admin')->prefix('admin')->group(function () {
         Route::get('/users', [AdminUserController::class, 'index']);
@@ -52,4 +53,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/platform-credentials', [PlatformCredentialController::class, 'index']);
         Route::post('/platform-credentials/{platform}', [PlatformCredentialController::class, 'update']);
     });
+
+    // Branding is a super-admin-only customization (logo/favicon/color for
+    // the dashboard) — regular users only get self-service profile editing
+    // (see /profile above), not the ability to reskin the app.
+    Route::middleware('super_admin')->post('/brand-settings', [BrandSettingController::class, 'update']);
 });

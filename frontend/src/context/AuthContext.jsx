@@ -55,6 +55,13 @@ export function AuthProvider({ children }) {
     setSessionFromResponse(res.data);
   };
 
+  // Used after a self-service profile update — swaps in the fresh user
+  // object without touching the auth token.
+  const refreshUser = (updatedUser) => {
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  };
+
   const logout = async () => {
     try {
       await api.post('/logout');
@@ -68,7 +75,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, logout, setSessionFromResponse }}
+      value={{ user, loading, login, register, logout, setSessionFromResponse, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

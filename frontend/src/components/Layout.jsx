@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBrand } from '../context/BrandContext';
 import Icon from './Icon';
 
+// Every user gets these five, including Profile — branding ("Settings") is a
+// super-admin-only capability and is appended separately below, alongside
+// Admin, so it never displaces Profile in the main nav / bottom tab bar.
 const navItems = [
   { to: '/', label: 'Dashboard', short: 'Home', end: true, icon: 'home' },
   { to: '/create', label: 'Create Post', short: 'Create', icon: 'plus' },
   { to: '/posts', label: 'Post History', short: 'History', icon: 'clock' },
   { to: '/accounts', label: 'Social Accounts', short: 'Accounts', icon: 'link' },
-  { to: '/settings', label: 'Settings', short: 'Settings', icon: 'settings' },
+  { to: '/profile', label: 'Profile', short: 'Profile', icon: 'user' },
 ];
 
 function initials(name) {
@@ -64,6 +67,33 @@ export default function Layout({ children }) {
     </NavLink>
   );
 
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  // Rendered after a divider in both the desktop sidebar and the mobile
+  // drawer — kept out of navItems/bottom-nav so it never displaces Profile.
+  const renderAdminExtras = () =>
+    isSuperAdmin && (
+      <>
+        <div className="sidebar-divider" />
+        <NavLink
+          to="/settings"
+          className={({ isActive }) => 'sidebar-link' + (isActive ? ' active' : '')}
+        >
+          <Icon name="settings" size={18} />
+          Settings
+        </NavLink>
+        <NavLink
+          to="/admin"
+          className={({ isActive }) =>
+            'sidebar-link sidebar-link-admin' + (isActive ? ' active' : '')
+          }
+        >
+          <Icon name="shield" size={18} />
+          Admin
+        </NavLink>
+      </>
+    );
+
   return (
     <div className="app-shell">
       {/* Desktop sidebar */}
@@ -73,20 +103,7 @@ export default function Layout({ children }) {
         </div>
         <nav className="sidebar-nav">
           {navItems.map((item) => renderNavLink(item))}
-          {user?.role === 'super_admin' && (
-            <>
-              <div className="sidebar-divider" />
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  'sidebar-link sidebar-link-admin' + (isActive ? ' active' : '')
-                }
-              >
-                <Icon name="shield" size={18} />
-                Admin
-              </NavLink>
-            </>
-          )}
+          {renderAdminExtras()}
         </nav>
       </aside>
 
@@ -109,20 +126,7 @@ export default function Layout({ children }) {
         </div>
         <nav className="sidebar-nav">
           {navItems.map((item) => renderNavLink(item))}
-          {user?.role === 'super_admin' && (
-            <>
-              <div className="sidebar-divider" />
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  'sidebar-link sidebar-link-admin' + (isActive ? ' active' : '')
-                }
-              >
-                <Icon name="shield" size={18} />
-                Admin
-              </NavLink>
-            </>
-          )}
+          {renderAdminExtras()}
           <div className="sidebar-divider" />
           <button className="sidebar-link text-left w-full" onClick={handleLogout}>
             <Icon name="logout" size={18} />
@@ -146,8 +150,10 @@ export default function Layout({ children }) {
             </div>
           </div>
           <div className="topbar-user">
-            <span className="avatar-initials">{initials(user?.name)}</span>
-            <span className="hidden sm:inline">{user?.name}</span>
+            <Link to="/profile" className="flex items-center gap-3 hover:no-underline" title="Your profile">
+              <span className="avatar-initials">{initials(user?.name)}</span>
+              <span className="hidden sm:inline text-text">{user?.name}</span>
+            </Link>
             <button className="btn btn-ghost btn-small" onClick={handleLogout}>
               <span className="hidden sm:inline">Logout</span>
               <Icon name="logout" size={16} className="sm:hidden" />

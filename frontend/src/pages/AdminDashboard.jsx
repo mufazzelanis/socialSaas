@@ -31,6 +31,7 @@ const EVENT_LABELS = {
   branding_updated: 'Updated branding',
   user_created_by_admin: 'User created (by admin)',
   permissions_updated: 'Permissions updated',
+  profile_updated: 'Updated profile',
 };
 
 const LOGIN_EVENT_GROUP = 'login,login_failed,logout';

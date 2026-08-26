@@ -12,6 +12,7 @@ import ConnectAccounts from './pages/ConnectAccounts';
 import CreatePost from './pages/CreatePost';
 import PostHistory from './pages/PostHistory';
 import Settings from './pages/Settings';
+import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
@@ -59,8 +60,16 @@ export default function App() {
             <Route
               path="/settings"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Settings />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               }
             />
