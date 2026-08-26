@@ -14,6 +14,7 @@ export default function TelegramFloatButton() {
       rel="noopener noreferrer"
       className="telegram-float-btn"
       title="Join our Telegram channel"
+      aria-label="Join our Telegram channel"
     >
       <BrandIcon name="telegram" size={20} />
       <span className="hidden sm:inline">Join Channel</span>
