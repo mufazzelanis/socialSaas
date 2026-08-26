@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import AdSlot from '../components/AdSlot';
+import ServicesSection from '../components/ServicesSection';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 
@@ -52,6 +53,8 @@ export default function Dashboard() {
           Manage Accounts
         </Link>
       </div>
+
+      <ServicesSection />
 
       <div className="card">
         <h2>Recent Posts</h2>

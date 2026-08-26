@@ -3,12 +3,16 @@
 use App\Http\Controllers\Api\Admin\ActivityLogController;
 use App\Http\Controllers\Api\Admin\AdSlotController as AdminAdSlotController;
 use App\Http\Controllers\Api\Admin\PlatformCredentialController;
+use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
+use App\Http\Controllers\Api\Admin\SiteSettingController as AdminSiteSettingController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AdSlotController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandSettingController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\SiteSettingController;
 use App\Http\Controllers\Api\SocialAccountController;
 use App\Http\Controllers\Api\SocialOAuthController;
 use Illuminate\Support\Facades\Route;
@@ -45,6 +49,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/brand-settings', [BrandSettingController::class, 'show']);
     Route::get('/ad-slots', [AdSlotController::class, 'index']);
+    Route::get('/services', [ServiceController::class, 'index']);
+    Route::get('/site-settings', [SiteSettingController::class, 'show']);
 
     Route::middleware('super_admin')->prefix('admin')->group(function () {
         Route::get('/users', [AdminUserController::class, 'index']);
@@ -58,6 +64,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/ad-slots', [AdminAdSlotController::class, 'index']);
         Route::post('/ad-slots/{placement}', [AdminAdSlotController::class, 'update']);
+
+        Route::get('/services', [AdminServiceController::class, 'index']);
+        Route::post('/services', [AdminServiceController::class, 'store']);
+        Route::post('/services/{service}', [AdminServiceController::class, 'update']);
+        Route::delete('/services/{service}', [AdminServiceController::class, 'destroy']);
+
+        Route::post('/site-settings', [AdminSiteSettingController::class, 'update']);
     });
 
     // Branding is a super-admin-only customization (logo/favicon/color for

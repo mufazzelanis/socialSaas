@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBrand } from '../context/BrandContext';
 import Icon from './Icon';
 import AdSlot from './AdSlot';
+import TelegramFloatButton from './TelegramFloatButton';
 
 // Every user gets these five, including Profile — branding ("Settings") is a
 // super-admin-only capability and is appended separately below, alongside
@@ -182,6 +183,8 @@ export default function Layout({ children }) {
           </NavLink>
         ))}
       </nav>
+
+      <TelegramFloatButton />
     </div>
   );
 }

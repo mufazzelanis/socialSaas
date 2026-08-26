@@ -7,6 +7,7 @@ const TABS = [
   { key: 'activity', label: 'Activity Logs' },
   { key: 'credentials', label: 'Platform Credentials' },
   { key: 'ads', label: 'Ads' },
+  { key: 'promote', label: 'Promote' },
 ];
 
 const AD_PLACEMENT_LABELS = {
@@ -99,6 +100,7 @@ export default function AdminDashboard() {
       )}
       {tab === 'credentials' && <CredentialsPanel />}
       {tab === 'ads' && <AdsPanel />}
+      {tab === 'promote' && <PromotePanel />}
     </Layout>
   );
 }
@@ -829,6 +831,352 @@ function AdsPanel() {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function PromotePanel() {
+  return (
+    <>
+      <TelegramButtonPanel />
+      <ServicesPanel />
+    </>
+  );
+}
+
+function TelegramButtonPanel() {
+  const [settings, setSettings] = useState(null);
+  const [url, setUrl] = useState('');
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const load = () => {
+    api.get('/site-settings').then((res) => {
+      setSettings(res.data);
+      setUrl(res.data.telegram_channel_url || '');
+      setEnabled(!!res.data.telegram_button_enabled);
+    });
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const save = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      await api.post('/admin/site-settings', {
+        telegram_channel_url: url,
+        telegram_button_enabled: enabled,
+      });
+      setMessage('Telegram button saved.');
+      load();
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Could not save.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!settings) return <p>Loading...</p>;
+
+  return (
+    <div className="card">
+      <h2>Floating "Join Telegram Channel" Button</h2>
+      <p className="muted">
+        Shows as a floating button on every page for every logged-in user, linking straight to
+        your channel — a simple way to funnel your existing traffic there.
+      </p>
+
+      {message && <div className="alert alert-info">{message}</div>}
+
+      <label className="field">
+        <span>Telegram Channel URL</span>
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://t.me/yourchannel"
+        />
+      </label>
+
+      <label className="toggle mb-3.5">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        Show the floating button
+      </label>
+
+      <button className="btn btn-primary btn-small" disabled={busy} onClick={save}>
+        {busy ? 'Saving...' : 'Save'}
+      </button>
+    </div>
+  );
+}
+
+function ServiceForm({ initial, onSaved, onCancel }) {
+  const isEdit = !!initial;
+  const [title, setTitle] = useState(initial?.title || '');
+  const [shortDescription, setShortDescription] = useState(initial?.short_description || '');
+  const [details, setDetails] = useState(initial?.details || '');
+  const [whatsappNumber, setWhatsappNumber] = useState(initial?.whatsapp_number || '');
+  const [whatsappMessage, setWhatsappMessage] = useState(initial?.whatsapp_message || '');
+  const [sortOrder, setSortOrder] = useState(initial?.sort_order ?? 0);
+  const [isEnabled, setIsEnabled] = useState(initial?.is_enabled ?? true);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(initial?.image_url || null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setImageFile(file);
+    setRemoveImage(false);
+    if (file) setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append('title', title);
+      form.append('short_description', shortDescription || '');
+      form.append('details', details || '');
+      form.append('whatsapp_number', whatsappNumber || '');
+      form.append('whatsapp_message', whatsappMessage || '');
+      form.append('sort_order', sortOrder);
+      form.append('is_enabled', isEnabled ? '1' : '0');
+      if (imageFile) form.append('image', imageFile);
+      if (removeImage) form.append('remove_image', '1');
+
+      if (isEdit) {
+        await api.post(`/admin/services/${initial.id}`, form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        await api.post('/admin/services', form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
+      onSaved();
+    } catch (err) {
+      const errors = err.response?.data?.errors;
+      const firstError = errors ? Object.values(errors)[0]?.[0] : null;
+      setError(firstError || err.response?.data?.message || 'Could not save this service.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="card" onSubmit={handleSubmit}>
+      <h2>{isEdit ? 'Edit Service' : 'Add Service'}</h2>
+
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div className="upload-box mb-4">
+        <h3>Image</h3>
+        <p className="upload-hint">Shown as the card thumbnail. Square-ish images look best.</p>
+        <div className="upload-preview">
+          {imagePreview ? (
+            <img src={imagePreview} alt="Preview" />
+          ) : (
+            <span className="upload-preview-empty">No image set</span>
+          )}
+        </div>
+        <div className="upload-actions">
+          <label className="file-input-label">
+            📤 Upload Image
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleImageChange} />
+          </label>
+          {imagePreview && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-danger btn-small"
+              onClick={() => {
+                setImageFile(null);
+                setImagePreview(null);
+                setRemoveImage(true);
+              }}
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="form-row">
+        <label className="field">
+          <span>Title</span>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+        </label>
+        <label className="field">
+          <span>Short Description (shown on the card)</span>
+          <input
+            value={shortDescription}
+            onChange={(e) => setShortDescription(e.target.value)}
+            placeholder="One line summary"
+          />
+        </label>
+      </div>
+
+      <label className="field">
+        <span>Details (shown when a user clicks the service)</span>
+        <textarea value={details} onChange={(e) => setDetails(e.target.value)} rows={4} />
+      </label>
+
+      <div className="form-row">
+        <label className="field">
+          <span>WhatsApp Number</span>
+          <input
+            value={whatsappNumber}
+            onChange={(e) => setWhatsappNumber(e.target.value)}
+            placeholder="+8801XXXXXXXXX"
+          />
+        </label>
+        <label className="field">
+          <span>WhatsApp Message (optional)</span>
+          <input
+            value={whatsappMessage}
+            onChange={(e) => setWhatsappMessage(e.target.value)}
+            placeholder={`Hi, I'm interested in ${title || 'this service'}.`}
+          />
+        </label>
+      </div>
+
+      <div className="form-row">
+        <label className="field">
+          <span>Sort Order (lower shows first)</span>
+          <input
+            type="number"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+          />
+        </label>
+        <label className="toggle self-end mb-4">
+          <input type="checkbox" checked={isEnabled} onChange={(e) => setIsEnabled(e.target.checked)} />
+          Enabled (visible to users)
+        </label>
+      </div>
+
+      <div className="form-actions">
+        <button className="btn btn-primary" disabled={busy}>
+          {busy ? 'Saving...' : 'Save Service'}
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function ServicesPanel() {
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
+    api
+      .get('/admin/services')
+      .then((res) => setServices(res.data))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const remove = async (service) => {
+    if (!window.confirm(`Delete "${service.title}"?`)) return;
+    setBusyId(service.id);
+    try {
+      await api.delete(`/admin/services/${service.id}`);
+      load(true);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (loading) return <p>Loading...</p>;
+
+  return (
+    <div className="card">
+      <div className="panel-header">
+        <h2 className="panel-title-inline">Services ({services.length})</h2>
+        {!showCreate && (
+          <button className="btn btn-primary btn-small" onClick={() => setShowCreate(true)}>
+            + Add Service
+          </button>
+        )}
+      </div>
+      <p className="muted">
+        Shown as clickable cards on every user's Dashboard, with a WhatsApp button to turn
+        interest into a direct conversation.
+      </p>
+
+      {showCreate && (
+        <ServiceForm
+          onSaved={() => {
+            setShowCreate(false);
+            load(true);
+          }}
+          onCancel={() => setShowCreate(false)}
+        />
+      )}
+
+      {services.length === 0 ? (
+        <p className="muted">No services yet.</p>
+      ) : (
+        <div className="service-grid">
+          {services.map((service) =>
+            editingId === service.id ? (
+              <div key={service.id} className="col-span-full">
+                <ServiceForm
+                  initial={service}
+                  onSaved={() => {
+                    setEditingId(null);
+                    load(true);
+                  }}
+                  onCancel={() => setEditingId(null)}
+                />
+              </div>
+            ) : (
+              <div className="service-card" key={service.id}>
+                <div className="service-card-image !cursor-default">
+                  {service.image_url ? (
+                    <img src={service.image_url} alt={service.title} />
+                  ) : (
+                    <span className="service-card-image-empty">{service.title[0]}</span>
+                  )}
+                </div>
+                <div className="service-card-body">
+                  <strong>{service.title}</strong>
+                  {!service.is_enabled && <span className="status-badge status-draft">Disabled</span>}
+                  {service.short_description && <p className="muted small">{service.short_description}</p>}
+                  <div className="form-actions mt-auto">
+                    <button className="btn btn-ghost btn-small" onClick={() => setEditingId(service.id)}>
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-danger btn-small"
+                      disabled={busyId === service.id}
+                      onClick={() => remove(service)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }
