@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { BrandProvider } from './context/BrandContext';
 import { AdProvider } from './context/AdContext';
@@ -35,6 +36,7 @@ function RouteFallback() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeProvider>
       <AuthProvider>
         <BrandProvider>
           <AdProvider>
@@ -109,6 +111,7 @@ export default function App() {
           </AdProvider>
         </BrandProvider>
       </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

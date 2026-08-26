@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBrand } from '../context/BrandContext';
+import { useTheme } from '../context/ThemeContext';
 import Icon from './Icon';
 import AdSlot from './AdSlot';
 import TelegramFloatButton from './TelegramFloatButton';
@@ -33,6 +34,7 @@ function BrandMark({ brand, compact }) {
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const { brand } = useBrand();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -153,6 +155,15 @@ export default function Layout({ children }) {
             </div>
           </div>
           <div className="topbar-user">
+            <button
+              type="button"
+              className="theme-toggle-btn"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={18} />
+            </button>
             <Link to="/profile" className="flex items-center gap-3 hover:no-underline" title="Your profile">
               <span className="avatar-initials">{initials(user?.name)}</span>
               <span className="hidden sm:inline text-text">{user?.name}</span>

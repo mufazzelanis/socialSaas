@@ -31,6 +31,20 @@
   --animate-in: fade-slide-in 0.18s ease-out;
 }
 
+/* Dark mode — ThemeContext.jsx sets data-theme on <html>, always to one of
+   these two values (an inline script in index.html sets it before first
+   paint too, so there's no flash of the wrong theme). Every utility class
+   built from the @theme tokens above (bg-surface, text-text, border-border,
+   bg-bg, ...) picks this up automatically — only the handful of components
+   below that hardcode a light-mode-specific color need their own override. */
+:root[data-theme='dark'] {
+  --color-bg: #111318;
+  --color-surface: #1b1e25;
+  --color-text: #e8e9ec;
+  --color-text-muted: #9498a3;
+  --color-border: #30333d;
+}
+
 @keyframes fade-slide-in {
   from {
     opacity: 0;
@@ -197,12 +211,50 @@
   .hamburger-btn {
     @apply -ml-1 flex items-center justify-center w-9 h-9 rounded-lg text-text hover:bg-bg transition-colors shrink-0;
   }
+  .theme-toggle-btn {
+    @apply flex items-center justify-center w-9 h-9 rounded-full border-none bg-bg text-text cursor-pointer transition-all duration-300 hover:bg-primary/10 hover:text-primary hover:rotate-12 active:scale-90;
+  }
   .topbar-brand-mobile {
     @apply flex items-center gap-2 font-bold text-text text-[0.95rem] overflow-hidden whitespace-nowrap text-ellipsis;
   }
 
   .content {
-    @apply flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8;
+    @apply flex-1 p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 relative overflow-hidden;
+  }
+  /* Very faint drifting color washes behind the dashboard content — pure
+     decoration (z-index below everything, no pointer events), just enough
+     ambient motion that the app doesn't feel static without ever competing
+     with the actual cards/data sitting on top of it. Scoped to .content
+     (not an ancestor of the sticky .topbar) so overflow-hidden here can't
+     break its stickiness. */
+  .content::before,
+  .content::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    border-radius: 9999px;
+    filter: blur(90px);
+    pointer-events: none;
+  }
+  .content::before {
+    width: 26rem;
+    height: 26rem;
+    top: -8rem;
+    right: -6rem;
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+    animation: float-blob 20s ease-in-out infinite;
+  }
+  .content::after {
+    width: 22rem;
+    height: 22rem;
+    bottom: -6rem;
+    left: 10%;
+    background: color-mix(in srgb, var(--primary) 6%, transparent);
+    animation: float-blob 26s ease-in-out infinite reverse;
+  }
+  .content > * {
+    position: relative;
+    z-index: 1;
   }
 
   /* ---------------- Mobile drawer nav ---------------- */
@@ -263,6 +315,9 @@
   }
   .muted-card {
     @apply bg-neutral-50;
+  }
+  :root[data-theme='dark'] .muted-card {
+    @apply bg-white/5;
   }
 
   /* ---------------- Buttons ---------------- */
@@ -335,6 +390,9 @@
   .rte-btn:hover {
     @apply bg-black/5;
   }
+  :root[data-theme='dark'] .rte-btn:hover {
+    @apply bg-white/10;
+  }
   .rte-btn.active {
     @apply bg-primary text-white;
   }
@@ -388,6 +446,15 @@
   }
   .alert-info {
     @apply bg-blue-50 text-blue-700 border-blue-200;
+  }
+  :root[data-theme='dark'] .alert-error {
+    @apply bg-red-500/10 text-red-400 border-red-500/30;
+  }
+  :root[data-theme='dark'] .alert-success {
+    @apply bg-green-500/10 text-green-400 border-green-500/30;
+  }
+  :root[data-theme='dark'] .alert-info {
+    @apply bg-blue-500/10 text-blue-400 border-blue-500/30;
   }
   .alert-dismissible {
     @apply cursor-pointer;
@@ -760,6 +827,9 @@
   .generated-password {
     @apply bg-black/5 px-2 py-0.5 rounded-md font-bold tracking-wide;
   }
+  :root[data-theme='dark'] .generated-password {
+    @apply bg-white/10;
+  }
 
   .platform-access-row {
     @apply flex gap-2 flex-wrap;
@@ -852,6 +922,10 @@
     @apply block w-full aspect-square border-none p-2.5 cursor-pointer overflow-hidden;
     background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 10%, white), color-mix(in srgb, var(--primary) 3%, white));
   }
+  :root[data-theme='dark'] .service-card-image,
+  :root[data-theme='dark'] .modal-image {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 25%, black), color-mix(in srgb, var(--primary) 8%, black));
+  }
   .service-card-image img {
     @apply w-full h-full object-contain rounded-lg transition-transform duration-300;
     filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.12));
@@ -905,6 +979,10 @@
   .modal-image {
     @apply w-full aspect-square object-contain rounded-xl mb-3.5 p-2;
     background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 10%, white), color-mix(in srgb, var(--primary) 3%, white));
+  }
+  :root[data-theme='dark'] .service-card-image,
+  :root[data-theme='dark'] .modal-image {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 25%, black), color-mix(in srgb, var(--primary) 8%, black));
   }
   .modal-details {
     @apply whitespace-pre-wrap text-text-muted mb-4;
