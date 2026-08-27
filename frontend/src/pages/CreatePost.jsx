@@ -5,6 +5,7 @@ import AdSlot from '../components/AdSlot';
 import api from '../api/client';
 import RichTextEditor from '../components/RichTextEditor';
 import DateTimePicker from '../components/DateTimePicker';
+import PlatformPreview from '../components/PlatformPreview';
 import Icon from '../components/Icon';
 
 const PLATFORM_LABELS = {
@@ -13,6 +14,27 @@ const PLATFORM_LABELS = {
   instagram: 'Instagram',
   linkedin: 'LinkedIn',
 };
+
+// Order the preview tabs read in, independent of PLATFORM_LABELS' own order.
+const PLATFORM_PREVIEW_ORDER = ['facebook', 'telegram', 'instagram', 'linkedin'];
+
+const PREVIEW_NAME_FALLBACK = {
+  facebook: 'Your Facebook Page',
+  telegram: 'Your Telegram Channel',
+  instagram: 'your_instagram',
+  linkedin: 'Your LinkedIn Profile',
+};
+
+// A rough client-side mirror of the backend's htmlToPlainText() (see
+// PostController) — the preview should show what will actually get
+// published (plain text, line breaks kept), not the rich-text HTML itself.
+function stripHtmlForPreview(html) {
+  const withBreaks = html.replace(/<(br|\/p|\/div|\/li|\/h[1-6])\s*\/?>/gi, '\n');
+  const container = document.createElement('div');
+  container.innerHTML = withBreaks;
+  const text = container.textContent || '';
+  return text.replace(/\n{3,}/g, '\n\n').trim();
+}
 
 const MAX_VIDEO_MB = 2048; // 2GB — matches the backend cap
 const MAX_IMAGE_MB = 10;
@@ -54,6 +76,7 @@ export default function CreatePost() {
   // shared content above, same as before this existed.
   const [customizing, setCustomizing] = useState({});
   const [overrides, setOverrides] = useState({});
+  const [activePreview, setActivePreview] = useState('facebook');
 
   useEffect(() => {
     api.get('/social-accounts').then((res) => setAccounts(res.data));
@@ -105,6 +128,24 @@ export default function CreatePost() {
 
   const removeMediaFile = (index) => {
     setMediaFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // What the preview should show for a given platform tab — the matching
+  // selected account's own per-platform override if it has one, else the
+  // shared content everyone else gets. Falls back to a generic name/handle
+  // when no account for that platform is connected/selected yet, so the
+  // tab still shows something useful before the user picks one.
+  const previewContentFor = (platform) => {
+    const acct = accounts.find((a) => a.platform === platform && selected.includes(a.id));
+    if (acct && customizing[acct.id] && overrides[acct.id]?.trim()) {
+      return overrides[acct.id].trim();
+    }
+    return stripHtmlForPreview(contentHtml);
+  };
+
+  const previewNameFor = (platform) => {
+    const acct = accounts.find((a) => a.platform === platform && selected.includes(a.id));
+    return acct?.account_name || PREVIEW_NAME_FALLBACK[platform] || 'Your Page';
   };
 
   const handleSubmit = async (e) => {
@@ -313,42 +354,31 @@ export default function CreatePost() {
 
         <div className="card preview-card">
           <h2>Preview</h2>
-          <div className="mock-post">
-            <div className="mock-post-header">
-              <div className="mock-avatar" />
-              <div>
-                <strong>Your Page</strong>
-                <div className="muted small">Just now</div>
-              </div>
-            </div>
-            {isTextEmpty(contentHtml) ? (
-              <p className="mock-post-body muted">Your post content will appear here...</p>
-            ) : (
-              <div className="mock-post-body" dangerouslySetInnerHTML={{ __html: contentHtml }} />
-            )}
-            {mediaFiles.length === 1 && (
-              mediaFiles[0].kind === 'video' ? (
-                <video src={mediaFiles[0].preview} controls className="mock-post-image" />
-              ) : (
-                <img src={mediaFiles[0].preview} alt="preview" className="mock-post-image" />
-              )
-            )}
-            {mediaFiles.length > 1 && (
-              <div className="mock-post-carousel">
-                {mediaFiles.map((m) =>
-                  m.kind === 'video' ? (
-                    <video src={m.preview} key={m.preview} className="mock-post-carousel-item" muted />
-                  ) : (
-                    <img src={m.preview} alt="" key={m.preview} className="mock-post-carousel-item" />
-                  )
-                )}
-              </div>
-            )}
+          <div className="preview-tabs">
+            {PLATFORM_PREVIEW_ORDER.map((p) => (
+              <button
+                type="button"
+                key={p}
+                className={'preview-tab' + (activePreview === p ? ' active' : '')}
+                onClick={() => setActivePreview(p)}
+              >
+                {PLATFORM_LABELS[p]}
+              </button>
+            ))}
           </div>
-          <p className="muted small">
-            Formatting (bold/lists/etc.) is for your writing comfort — none of these platforms
-            render rich text in posts, so what actually publishes is clean plain text with your
-            line breaks kept.
+
+          <PlatformPreview
+            platform={activePreview}
+            name={previewNameFor(activePreview)}
+            content={isTextEmpty(contentHtml) ? '' : previewContentFor(activePreview)}
+            mediaFiles={mediaFiles}
+          />
+
+          <p className="muted small mt-3">
+            This is a close approximation of each platform's layout, not a pixel-perfect
+            render — formatting (bold/lists/etc.) is for your writing comfort only, since none of
+            these platforms render rich text in posts; what actually publishes is clean plain
+            text with your line breaks kept.
           </p>
 
           <AdSlot placement="create_post" />

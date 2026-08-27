@@ -682,6 +682,92 @@
   .mock-post-carousel::-webkit-scrollbar {
     display: none;
   }
+
+  /* ---------------- Per-platform preview (Create Post) ---------------- */
+  .preview-tabs {
+    @apply flex flex-wrap gap-2 mb-3.5;
+  }
+  .preview-tab {
+    @apply flex items-center gap-1.5 border border-border rounded-full px-3 py-1.5 text-[0.8rem] font-medium bg-surface text-text-muted cursor-pointer transition-all;
+  }
+  .preview-tab:hover {
+    @apply border-primary/40 text-text;
+  }
+  .preview-tab.active {
+    @apply border-primary bg-primary/10 text-primary;
+  }
+  .pv-card {
+    @apply border border-border rounded-xl p-3.5 bg-surface animate-in;
+  }
+  .pv-header {
+    @apply flex items-center gap-2.5 mb-2.5;
+  }
+  .pv-header-trailing {
+    @apply ml-auto text-text-muted;
+  }
+  .pv-avatar {
+    @apply w-9 h-9 rounded-full flex items-center justify-center text-white text-[0.8rem] font-bold shrink-0;
+  }
+  .pv-avatar--fb {
+    background: #1877f2;
+  }
+  .pv-avatar--ig {
+    background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af, #515bd4);
+  }
+  .pv-avatar--tg {
+    background: #229ed9;
+  }
+  .pv-avatar--li {
+    @apply rounded-md;
+    background: #0a66c2;
+  }
+  .pv-name {
+    @apply text-[0.9rem] leading-tight;
+  }
+  .pv-meta {
+    @apply flex items-center gap-1 text-[0.75rem] text-text-muted;
+  }
+  .pv-text {
+    @apply text-[0.9rem] whitespace-pre-wrap mb-2.5 mt-0;
+  }
+  .pv-media {
+    @apply relative rounded-lg overflow-hidden mb-2.5 bg-bg;
+  }
+  .pv-media-el {
+    @apply w-full max-h-72 object-cover block;
+  }
+  .pv-media--square .pv-media-el {
+    @apply aspect-square max-h-none;
+  }
+  .pv-media-badge {
+    @apply absolute top-2 right-2 bg-black/60 text-white text-[0.7rem] font-semibold px-1.5 py-0.5 rounded-full;
+  }
+  .pv-actions {
+    @apply flex gap-4 pt-2.5 border-t border-border text-[0.8rem] text-text-muted;
+  }
+  .pv-actions span {
+    @apply flex items-center gap-1.5;
+  }
+  .pv-ig-actions {
+    @apply flex items-center gap-3 py-2 text-text;
+  }
+  .pv-ig-save {
+    @apply ml-auto;
+  }
+
+  /* Telegram gets a distinct chat-bubble treatment instead of the generic
+     card — a soft "chat wallpaper" backdrop behind a rounded message bubble,
+     since that's what actually distinguishes it visually from a feed post. */
+  .pv-card--tg-wrap {
+    @apply p-3;
+    background: color-mix(in srgb, #229ed9 8%, var(--color-bg));
+  }
+  .pv-tg-bubble {
+    @apply bg-surface rounded-xl rounded-tl-sm p-3 shadow-sm;
+  }
+  .pv-tg-meta {
+    @apply flex items-center justify-end gap-1 text-[0.7rem] text-text-muted;
+  }
   .mock-post-carousel-item {
     @apply w-28 h-28 shrink-0 rounded-lg object-cover;
   }

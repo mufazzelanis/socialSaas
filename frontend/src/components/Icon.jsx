@@ -50,6 +50,37 @@ const PATHS = {
   ),
   'chevron-left': <path d="M15 5 8 12l7 7" />,
   'chevron-right': <path d="M9 5l7 7-7 7" />,
+  heart: <path d="M12 20.5S3.5 15.2 3.5 9a4.5 4.5 0 0 1 8.5-2 4.5 4.5 0 0 1 8.5 2c0 6.2-8.5 11.5-8.5 11.5Z" />,
+  comment: <path d="M4 4.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 4V17H4a1 1 0 0 1-1-1V5.5a1 1 0 0 1 1-1Z" />,
+  share: (
+    <>
+      <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
+      <path d="M12 15V3M7 8l5-5 5 5" />
+    </>
+  ),
+  bookmark: <path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V4.5a1 1 0 0 1 1-1Z" />,
+  'thumbs-up': <path d="M7 21h10a2 2 0 0 0 2-1.5l1.4-6A2 2 0 0 0 18.4 11H14l.8-4.6a1.6 1.6 0 0 0-3-1L8 11H4a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h3Z" />,
+  repeat: (
+    <>
+      <path d="M4 7h11a3 3 0 0 1 3 3v2M20 17H9a3 3 0 0 1-3-3v-2" />
+      <path d="m17 4 3 3-3 3M7 20l-3-3 3-3" />
+    </>
+  ),
+  'paper-plane': <path d="M21 3 3 10.5l7 3.5m11-11-4 17-7-6.5m11-10.5L10 14" />,
+  dots: (
+    <>
+      <circle cx="5" cy="12" r="1.5" />
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="19" cy="12" r="1.5" />
+    </>
+  ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18Z" />
+    </>
+  ),
+  check: <path d="M5 13l4 4L19 7" />,
 };
 
 export default function Icon({ name, size = 20, className = '', strokeWidth = 2 }) {
