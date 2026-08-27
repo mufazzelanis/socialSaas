@@ -14,7 +14,7 @@ class LinkedInPublisher implements SocialPublisherInterface
     // size. Larger files would need chunked upload implemented separately.
     protected const MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // 500MB
 
-    public function publish(SocialAccount $account, Post $post): PublishResult
+    public function publish(SocialAccount $account, Post $post, string $content): PublishResult
     {
         $accessToken = $account->access_token;
         $authorUrn = $account->meta['urn'] ?? null;
@@ -23,17 +23,38 @@ class LinkedInPublisher implements SocialPublisherInterface
             return PublishResult::fail('This LinkedIn account is missing its access token — reconnect it.');
         }
 
-        if ($post->media_path && Storage::disk('public')->size($post->media_path) > self::MAX_UPLOAD_BYTES) {
-            return PublishResult::fail('This file is too large for this app\'s LinkedIn upload — it only supports simple (non-chunked) uploads up to about 500MB.');
+        $items = $post->mediaItems()->filter(fn (array $item) => Storage::disk('public')->exists($item['path']));
+
+        foreach ($items as $item) {
+            if (Storage::disk('public')->size($item['path']) > self::MAX_UPLOAD_BYTES) {
+                return PublishResult::fail('This file is too large for this app\'s LinkedIn upload — it only supports simple (non-chunked) uploads up to about 500MB.');
+            }
         }
+
+        // LinkedIn's classic UGC share API only accepts multiple assets when
+        // they're all images (a multi-image share) — video is always a
+        // single asset. A mixed or video-only multi-item post falls back to
+        // just its first item, same as this publisher has always done.
+        $allImages = $items->isNotEmpty() && $items->every(fn (array $item) => $item['type'] === 'image');
 
         try {
             $mediaCategory = 'NONE';
             $media = null;
 
-            if ($post->media_path && Storage::disk('public')->exists($post->media_path)) {
-                $isVideo = $post->media_type === 'video';
-                $asset = $this->uploadMedia($accessToken, $authorUrn, $post, $isVideo);
+            if ($items->count() > 1 && $allImages) {
+                $media = [];
+                foreach ($items as $item) {
+                    $asset = $this->uploadMedia($accessToken, $authorUrn, $item['path'], false);
+                    if (! $asset) {
+                        return PublishResult::fail('Could not upload one of the images to LinkedIn.');
+                    }
+                    $media[] = ['status' => 'READY', 'media' => $asset];
+                }
+                $mediaCategory = 'IMAGE';
+            } elseif ($items->isNotEmpty()) {
+                $item = $items->first();
+                $isVideo = $item['type'] === 'video';
+                $asset = $this->uploadMedia($accessToken, $authorUrn, $item['path'], $isVideo);
 
                 if (! $asset) {
                     return PublishResult::fail('Could not upload the '.($isVideo ? 'video' : 'image').' to LinkedIn.');
@@ -47,7 +68,7 @@ class LinkedInPublisher implements SocialPublisherInterface
             }
 
             $shareContent = [
-                'shareCommentary' => ['text' => $post->content],
+                'shareCommentary' => ['text' => $content],
                 'shareMediaCategory' => $mediaCategory,
             ];
 
@@ -83,7 +104,7 @@ class LinkedInPublisher implements SocialPublisherInterface
         }
     }
 
-    protected function uploadMedia(string $accessToken, string $authorUrn, Post $post, bool $isVideo): ?string
+    protected function uploadMedia(string $accessToken, string $authorUrn, string $path, bool $isVideo): ?string
     {
         $recipe = $isVideo ? 'feedshare-video' : 'feedshare-image';
 
@@ -102,14 +123,20 @@ class LinkedInPublisher implements SocialPublisherInterface
             return null;
         }
 
-        $uploadUrl = $registerResponse->json('value.uploadMechanism.com\.linkedin\.digitalmedia\.uploading\.MediaUploadHttpRequest.uploadUrl');
-        $asset = $registerResponse->json('value.asset');
+        // Not dot-notation ($response->json('a.b.c')) on purpose — the real
+        // key here ("com.linkedin.digitalmedia.uploading....") contains
+        // literal dots itself, which dot-notation has no way to address
+        // (there's no escape syntax for it), so this reads the decoded
+        // array directly instead.
+        $registerData = $registerResponse->json();
+        $uploadUrl = $registerData['value']['uploadMechanism']['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']['uploadUrl'] ?? null;
+        $asset = $registerData['value']['asset'] ?? null;
 
         if (! $uploadUrl || ! $asset) {
             return null;
         }
 
-        $absolutePath = Storage::disk('public')->path($post->media_path);
+        $absolutePath = Storage::disk('public')->path($path);
 
         $uploadResponse = Http::withToken($accessToken)
             ->withBody(fopen($absolutePath, 'r'), 'application/octet-stream')

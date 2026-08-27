@@ -4,6 +4,7 @@ namespace App\Services\Publishers;
 
 use App\Models\Post;
 use App\Models\SocialAccount;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -19,7 +20,7 @@ class InstagramPublisher implements SocialPublisherInterface
         return "https://graph.facebook.com/{$this->version()}/{$path}";
     }
 
-    public function publish(SocialAccount $account, Post $post): PublishResult
+    public function publish(SocialAccount $account, Post $post, string $content): PublishResult
     {
         $accessToken = $account->access_token; // the linked Facebook Page's token
         $igUserId = $account->account_id;
@@ -28,22 +29,29 @@ class InstagramPublisher implements SocialPublisherInterface
             return PublishResult::fail('This Instagram account is missing its access token — reconnect it.');
         }
 
-        if (! $post->media_path || ! Storage::disk('public')->exists($post->media_path)) {
+        $items = $post->mediaItems()->filter(fn (array $item) => Storage::disk('public')->exists($item['path']));
+
+        if ($items->isEmpty()) {
             return PublishResult::fail('Instagram requires an image or video attached to the post — text-only posts are not supported.');
         }
 
-        $isVideo = $post->media_type === 'video';
-
-        // Instagram's publishing API fetches the media itself from a public
-        // URL (no direct file upload) — so this only works once the app is
-        // reachable over the internet. On localhost this step will fail;
-        // that's expected until this is deployed behind a real domain.
-        $mediaUrl = Storage::disk('public')->url($post->media_path);
-
         try {
+            if ($items->count() > 1) {
+                return $this->publishCarousel($igUserId, $accessToken, $items, $content);
+            }
+
+            $item = $items->first();
+            $isVideo = $item['type'] === 'video';
+
+            // Instagram's publishing API fetches the media itself from a
+            // public URL (no direct file upload) — so this only works once
+            // the app is reachable over the internet. On localhost this
+            // step will fail; that's expected until deployed to a domain.
+            $mediaUrl = Storage::disk('public')->url($item['path']);
+
             // Step 1: create a media container.
             $containerParams = [
-                'caption' => $post->content,
+                'caption' => $content,
                 'access_token' => $accessToken,
             ];
             $containerParams[$isVideo ? 'video_url' : 'image_url'] = $mediaUrl;
@@ -96,6 +104,70 @@ class InstagramPublisher implements SocialPublisherInterface
         } catch (\Throwable $e) {
             return PublishResult::fail($e->getMessage());
         }
+    }
+
+    /**
+     * 2-10 items as one carousel post: each item first becomes its own
+     * unpublished "carousel item" container (children don't get their own
+     * caption — only the parent carousel does), then a CAROUSEL container
+     * ties them together, then that gets published like any other post.
+     */
+    protected function publishCarousel(string $igUserId, string $accessToken, Collection $items, string $content): PublishResult
+    {
+        $childIds = [];
+
+        foreach ($items as $item) {
+            $isVideo = $item['type'] === 'video';
+            $mediaUrl = Storage::disk('public')->url($item['path']);
+
+            $params = [
+                'is_carousel_item' => 'true',
+                'access_token' => $accessToken,
+            ];
+            $params[$isVideo ? 'video_url' : 'image_url'] = $mediaUrl;
+
+            $response = Http::post($this->graphUrl("{$igUserId}/media"), $params);
+            $data = $response->json();
+
+            if (! $response->successful() || empty($data['id'])) {
+                return PublishResult::fail($data['error']['message'] ?? 'Could not create one of the Instagram carousel items.');
+            }
+
+            if ($isVideo) {
+                $ready = $this->waitForVideoProcessing($accessToken, $data['id']);
+                if (! $ready) {
+                    return PublishResult::fail('Instagram is still processing one of the videos in this carousel — try publishing again in a minute.');
+                }
+            }
+
+            $childIds[] = $data['id'];
+        }
+
+        $carouselResponse = Http::post($this->graphUrl("{$igUserId}/media"), [
+            'media_type' => 'CAROUSEL',
+            'children' => implode(',', $childIds),
+            'caption' => $content,
+            'access_token' => $accessToken,
+        ]);
+        $carouselData = $carouselResponse->json();
+
+        if (! $carouselResponse->successful() || empty($carouselData['id'])) {
+            return PublishResult::fail($carouselData['error']['message'] ?? 'Could not create the Instagram carousel.');
+        }
+
+        $publishResponse = Http::post($this->graphUrl("{$igUserId}/media_publish"), [
+            'creation_id' => $carouselData['id'],
+            'access_token' => $accessToken,
+        ]);
+        $publishData = $publishResponse->json();
+
+        if (! $publishResponse->successful() || empty($publishData['id'])) {
+            return PublishResult::fail($publishData['error']['message'] ?? 'Could not publish the Instagram carousel.');
+        }
+
+        $mediaId = $publishData['id'];
+
+        return PublishResult::ok(platformPostId: $mediaId, postUrl: $this->buildPostUrl($accessToken, $mediaId));
     }
 
     protected function waitForVideoProcessing(string $accessToken, string $containerId, int $maxAttempts = 10, int $delaySeconds = 3): bool

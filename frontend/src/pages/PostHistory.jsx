@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import AdSlot from '../components/AdSlot';
 import DateTimePicker from '../components/DateTimePicker';
+import Icon from '../components/Icon';
 import api from '../api/client';
 
 const PLATFORM_LABELS = {
@@ -34,7 +35,10 @@ export default function PostHistory() {
   const [busyKey, setBusyKey] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editContent, setEditContent] = useState('');
-  const [editMedia, setEditMedia] = useState(null);
+  // Staged replacement files, [{ file, preview }, ...] — uploading any
+  // replaces the post's entire existing media set, same as before this
+  // supported more than one file.
+  const [editMediaFiles, setEditMediaFiles] = useState([]);
   const [editRemoveMedia, setEditRemoveMedia] = useState(false);
   const [editError, setEditError] = useState('');
   const [reschedulingId, setReschedulingId] = useState(null);
@@ -129,16 +133,24 @@ export default function PostHistory() {
   const startEdit = (post) => {
     setEditingId(post.id);
     setEditContent(post.content);
-    setEditMedia(null);
+    setEditMediaFiles([]);
     setEditRemoveMedia(false);
     setEditError('');
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditMedia(null);
+    setEditMediaFiles([]);
     setEditRemoveMedia(false);
     setEditError('');
+  };
+
+  const handleEditMediaChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setEditMediaFiles(files.map((file) => ({ file, preview: URL.createObjectURL(file) })));
+    setEditRemoveMedia(false);
+    e.target.value = '';
   };
 
   // Saves the edited content/media, then automatically retries every
@@ -153,7 +165,7 @@ export default function PostHistory() {
     try {
       const form = new FormData();
       form.append('content', editContent);
-      if (editMedia) form.append('media', editMedia);
+      editMediaFiles.forEach((m) => form.append('media[]', m.file));
       if (editRemoveMedia) form.append('remove_media', '1');
 
       await api.post(`/posts/${post.id}`, form, {
@@ -280,13 +292,19 @@ export default function PostHistory() {
                     />
                   </label>
 
-                  {post.media_path && !editRemoveMedia && !editMedia && (
+                  {post.media_items.length > 0 && !editRemoveMedia && editMediaFiles.length === 0 && (
                     <div className="field">
-                      <img
-                        src={`${import.meta.env.VITE_API_URL.replace('/api', '')}/storage/${post.media_path}`}
-                        alt=""
-                        className="post-media"
-                      />
+                      <div className="media-thumb-grid">
+                        {post.media_items.map((m, i) => (
+                          <div className="media-thumb" key={i}>
+                            {m.type === 'video' ? (
+                              <video src={m.url} className="media-thumb-img" muted />
+                            ) : (
+                              <img src={m.url} alt="" className="media-thumb-img" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
                       <button
                         type="button"
                         className="btn btn-ghost btn-small"
@@ -297,19 +315,30 @@ export default function PostHistory() {
                     </div>
                   )}
 
+                  {editMediaFiles.length > 0 && (
+                    <div className="media-thumb-grid">
+                      {editMediaFiles.map((m, i) => (
+                        <div className="media-thumb" key={m.preview}>
+                          <img src={m.preview} alt="" className="media-thumb-img" />
+                          <button
+                            type="button"
+                            className="media-thumb-remove"
+                            onClick={() => setEditMediaFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                            aria-label="Remove this file"
+                          >
+                            <Icon name="x" size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <label className="field">
-                    <span>{post.media_path ? 'Replace image/video' : 'Attach image or video'}</span>
-                    <input
-                      type="file"
-                      accept="image/*,video/*"
-                      onChange={(e) => {
-                        setEditMedia(e.target.files?.[0] || null);
-                        setEditRemoveMedia(false);
-                      }}
-                    />
+                    <span>{post.media_items.length > 0 ? 'Replace images/video' : 'Attach images or video'}</span>
+                    <input type="file" accept="image/*,video/*" multiple onChange={handleEditMediaChange} />
                     <span className="muted small">
-                      Failed platforms (e.g. Instagram needing an image) are automatically
-                      retried after you save.
+                      Uploading replaces all existing media on this post. Failed platforms (e.g.
+                      Instagram needing an image) are automatically retried after you save.
                     </span>
                   </label>
 
@@ -330,12 +359,23 @@ export default function PostHistory() {
                 <>
                   <p className="post-content">{post.content}</p>
 
-                  {post.media_path && (
-                    <img
-                      src={`${import.meta.env.VITE_API_URL.replace('/api', '')}/storage/${post.media_path}`}
-                      alt=""
-                      className="post-media"
-                    />
+                  {post.media_items.length === 1 && (
+                    post.media_items[0].type === 'video' ? (
+                      <video src={post.media_items[0].url} controls className="post-media" />
+                    ) : (
+                      <img src={post.media_items[0].url} alt="" className="post-media" />
+                    )
+                  )}
+                  {post.media_items.length > 1 && (
+                    <div className="mock-post-carousel mb-3">
+                      {post.media_items.map((m, i) =>
+                        m.type === 'video' ? (
+                          <video src={m.url} key={i} className="mock-post-carousel-item" controls muted />
+                        ) : (
+                          <img src={m.url} alt="" key={i} className="mock-post-carousel-item" />
+                        )
+                      )}
+                    </div>
                   )}
                 </>
               )}

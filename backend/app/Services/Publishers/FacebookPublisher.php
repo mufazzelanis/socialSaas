@@ -4,6 +4,7 @@ namespace App\Services\Publishers;
 
 use App\Models\Post;
 use App\Models\SocialAccount;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -26,7 +27,7 @@ class FacebookPublisher implements SocialPublisherInterface
         return "https://graph.facebook.com/{$this->version()}/{$path}";
     }
 
-    public function publish(SocialAccount $account, Post $post): PublishResult
+    public function publish(SocialAccount $account, Post $post, string $content): PublishResult
     {
         $pageToken = $account->access_token; // Page access token, from OAuth connect
         $pageId = $account->account_id;
@@ -35,27 +36,42 @@ class FacebookPublisher implements SocialPublisherInterface
             return PublishResult::fail('This Facebook Page is missing its access token — reconnect it.');
         }
 
-        $isVideo = $post->media_type === 'video';
+        $items = $post->mediaItems()->filter(fn (array $item) => Storage::disk('public')->exists($item['path']));
 
-        if ($post->media_path && Storage::disk('public')->size($post->media_path) > self::MAX_UPLOAD_BYTES) {
-            return PublishResult::fail('This file is too large for this app\'s Facebook upload — it only supports simple (non-chunked) uploads up to about 1GB.');
+        foreach ($items as $item) {
+            if (Storage::disk('public')->size($item['path']) > self::MAX_UPLOAD_BYTES) {
+                return PublishResult::fail('This file is too large for this app\'s Facebook upload — it only supports simple (non-chunked) uploads up to about 1GB.');
+            }
         }
 
+        // Facebook's multi-photo album flow (unpublished photo uploads +
+        // attached_media on /feed) only accepts photos. A mixed or
+        // video-only multi-item post falls back to just its first item —
+        // the same single-media path this publisher has always had.
+        $allImages = $items->isNotEmpty() && $items->every(fn (array $item) => $item['type'] === 'image');
+
         try {
-            if ($post->media_path && Storage::disk('public')->exists($post->media_path)) {
-                $absolutePath = Storage::disk('public')->path($post->media_path);
+            if ($items->count() > 1 && $allImages) {
+                return $this->publishAlbum($pageId, $pageToken, $items, $content);
+            }
+
+            $item = $items->first();
+            $isVideo = $item && $item['type'] === 'video';
+
+            if ($item) {
+                $absolutePath = Storage::disk('public')->path($item['path']);
 
                 $response = Http::attach(
                     'source',
                     fopen($absolutePath, 'r'),
                     basename($absolutePath)
                 )->post($this->graphUrl($isVideo ? "{$pageId}/videos" : "{$pageId}/photos"), [
-                    $isVideo ? 'description' : 'caption' => $post->content,
+                    $isVideo ? 'description' : 'caption' => $content,
                     'access_token' => $pageToken,
                 ]);
             } else {
                 $response = Http::post($this->graphUrl("{$pageId}/feed"), [
-                    'message' => $post->content,
+                    'message' => $content,
                     'access_token' => $pageToken,
                 ]);
             }
@@ -77,5 +93,57 @@ class FacebookPublisher implements SocialPublisherInterface
         } catch (\Throwable $e) {
             return PublishResult::fail($e->getMessage());
         }
+    }
+
+    /**
+     * Multi-photo album: each photo is uploaded unpublished first (no
+     * standalone post created for it), then one /feed post attaches all of
+     * them together via attached_media.
+     */
+    protected function publishAlbum(string $pageId, string $pageToken, Collection $items, string $content): PublishResult
+    {
+        $photoIds = [];
+
+        foreach ($items as $item) {
+            $absolutePath = Storage::disk('public')->path($item['path']);
+
+            $response = Http::attach(
+                'source',
+                fopen($absolutePath, 'r'),
+                basename($absolutePath)
+            )->post($this->graphUrl("{$pageId}/photos"), [
+                'published' => 'false',
+                'access_token' => $pageToken,
+            ]);
+
+            $data = $response->json();
+
+            if (! $response->successful() || empty($data['id'])) {
+                return PublishResult::fail($data['error']['message'] ?? 'Could not upload one of the images to Facebook.');
+            }
+
+            $photoIds[] = $data['id'];
+        }
+
+        $attachedMedia = array_map(fn ($id) => ['media_fbid' => $id], $photoIds);
+
+        $response = Http::post($this->graphUrl("{$pageId}/feed"), [
+            'message' => $content,
+            'attached_media' => json_encode($attachedMedia),
+            'access_token' => $pageToken,
+        ]);
+
+        $data = $response->json();
+
+        if (! $response->successful()) {
+            return PublishResult::fail($data['error']['message'] ?? 'Unknown Facebook API error.');
+        }
+
+        $postId = $data['post_id'] ?? $data['id'] ?? null;
+
+        return PublishResult::ok(
+            platformPostId: $postId,
+            postUrl: $postId ? "https://www.facebook.com/{$postId}" : null,
+        );
     }
 }

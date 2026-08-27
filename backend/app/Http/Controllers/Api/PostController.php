@@ -39,10 +39,68 @@ class PostController extends Controller
         return in_array(strtolower($file->getClientOriginalExtension()), self::VIDEO_EXTENSIONS, true);
     }
 
+    /**
+     * Shared per-file validation rules for a single media upload — used for
+     * both a lone file and each item of a multi-file upload alike.
+     */
+    protected function mediaItemRules(): array
+    {
+        return [
+            'file',
+            'mimes:jpg,jpeg,png,gif,webp,bmp,'.implode(',', self::VIDEO_EXTENSIONS),
+            function ($attribute, $value, $fail) {
+                $isVideo = $this->isVideoUpload($value);
+                $maxKb = $isVideo ? 2097152 : 10240; // 2GB video, 10MB image
+                if ($value->getSize() > $maxKb * 1024) {
+                    $fail($isVideo
+                        ? 'Videos must be 2GB or smaller.'
+                        : 'Images must be 10MB or smaller.');
+                }
+            },
+        ];
+    }
+
+    /**
+     * Persists uploaded files as ordered post_media rows — 1 file behaves
+     * exactly like the old single-attachment posts, 2+ becomes a carousel/
+     * album/media-group depending on what each platform's Publisher does
+     * with multiple items.
+     *
+     * @param  \Illuminate\Http\UploadedFile[]  $files
+     */
+    protected function storeMedia(Post $post, array $files): void
+    {
+        foreach (array_values($files) as $position => $file) {
+            $post->media()->create([
+                'path' => $file->store('posts', 'public'),
+                'type' => $this->isVideoUpload($file) ? 'video' : 'image',
+                'position' => $position,
+            ]);
+        }
+    }
+
+    /**
+     * Removes every media item a post has — post_media rows (new posts) and
+     * the legacy media_path column (posts from before that table existed)
+     * alike — deleting the underlying files, not just the DB rows.
+     */
+    protected function deleteAllMedia(Post $post): void
+    {
+        foreach ($post->media as $item) {
+            Storage::disk('public')->delete($item->path);
+        }
+        $post->media()->delete();
+
+        if ($post->media_path) {
+            Storage::disk('public')->delete($post->media_path);
+            $post->update(['media_path' => null, 'media_type' => null]);
+        }
+    }
+
     public function index(Request $request)
     {
         $posts = $request->user()->posts()
-            ->with('platforms.socialAccount')
+            ->with('platforms.socialAccount', 'media')
             ->latest()
             ->paginate(15);
 
@@ -53,7 +111,7 @@ class PostController extends Controller
     {
         abort_unless($post->user_id === $request->user()->id, 403);
 
-        return response()->json($post->load('platforms.socialAccount'));
+        return response()->json($post->load('platforms.socialAccount', 'media'));
     }
 
     public function store(Request $request)
@@ -66,25 +124,24 @@ class PostController extends Controller
             'content_html' => ['nullable', 'string'],
             'social_account_ids' => ['required', 'array', 'min:1'],
             'social_account_ids.*' => ['integer', 'exists:social_accounts,id'],
-            'media' => [
-                'nullable',
-                'file',
-                'mimes:jpg,jpeg,png,gif,webp,bmp,'.implode(',', self::VIDEO_EXTENSIONS),
-                function ($attribute, $value, $fail) {
-                    $isVideo = $this->isVideoUpload($value);
-                    $maxKb = $isVideo ? 2097152 : 10240; // 2GB video, 10MB image
-                    if ($value->getSize() > $maxKb * 1024) {
-                        $fail($isVideo
-                            ? 'Videos must be 2GB or smaller.'
-                            : 'Images must be 10MB or smaller.');
-                    }
-                },
-            ],
+            // 1 file behaves exactly as a single image/video always did; 2+
+            // becomes a carousel/album/media-group. Capped at 10 — the
+            // ceiling every platform here already imposes on its own
+            // carousel/media-group (Instagram, Telegram), so nothing
+            // gets accepted here only to fail once publishing is attempted.
+            'media' => ['sometimes', 'array', 'max:10'],
+            'media.*' => $this->mediaItemRules(),
             'publish_now' => ['sometimes', 'boolean'],
             // A future timestamp to auto-publish at instead of right now.
             // When present it always wins over publish_now — you can't both
             // schedule and immediately publish the same post.
             'scheduled_at' => ['nullable', 'date', 'after:now'],
+            // Optional per-platform caption overrides, keyed by
+            // social_account_id (as sent in social_account_ids[] above).
+            // A platform without an entry here — or with an empty one —
+            // just uses the shared content above.
+            'platform_content' => ['sometimes', 'array'],
+            'platform_content.*' => ['nullable', 'string'],
         ]);
 
         $accounts = SocialAccount::whereIn('id', $data['social_account_ids'])
@@ -104,29 +161,31 @@ class PostController extends Controller
 
         abort_if($content === '', 422, 'Post content cannot be empty.');
 
-        $mediaPath = null;
-        $mediaType = null;
-
-        if ($request->hasFile('media')) {
-            $file = $request->file('media');
-            $mediaPath = $file->store('posts', 'public');
-            $mediaType = $this->isVideoUpload($file) ? 'video' : 'image';
-        }
-
         $scheduledAt = $data['scheduled_at'] ?? null;
 
         $post = $request->user()->posts()->create([
             'content' => $content,
-            'media_path' => $mediaPath,
-            'media_type' => $mediaType,
             'status' => $scheduledAt ? 'scheduled' : 'draft',
             'scheduled_at' => $scheduledAt,
         ]);
 
+        if ($request->hasFile('media')) {
+            $this->storeMedia($post, $request->file('media'));
+        }
+
+        $platformContent = $data['platform_content'] ?? [];
+
         foreach ($accounts as $account) {
+            // The override arrives as plain text from the composer's simple
+            // per-platform textarea (unlike the main content, it doesn't go
+            // through the rich-text editor, so no HTML-to-text conversion
+            // is needed here — just trim it).
+            $override = trim((string) ($platformContent[$account->id] ?? ''));
+
             $post->platforms()->create([
                 'social_account_id' => $account->id,
                 'platform' => $account->platform,
+                'content_override' => $override !== '' ? $override : null,
                 'status' => 'pending',
             ]);
         }
@@ -139,7 +198,7 @@ class PostController extends Controller
             $this->publishingService->publishPost($post);
         }
 
-        return response()->json($post->load('platforms.socialAccount'), 201);
+        return response()->json($post->load('platforms.socialAccount', 'media'), 201);
     }
 
     public function publish(Request $request, Post $post)
@@ -148,7 +207,7 @@ class PostController extends Controller
 
         $this->publishingService->publishPost($post);
 
-        return response()->json($post->load('platforms.socialAccount'));
+        return response()->json($post->load('platforms.socialAccount', 'media'));
     }
 
     /**
@@ -164,27 +223,23 @@ class PostController extends Controller
         $data = $request->validate([
             'content' => ['nullable', 'string'],
             'content_html' => ['nullable', 'string'],
-            'media' => [
-                'nullable',
-                'file',
-                'mimes:jpg,jpeg,png,gif,webp,bmp,'.implode(',', self::VIDEO_EXTENSIONS),
-                function ($attribute, $value, $fail) {
-                    $isVideo = $this->isVideoUpload($value);
-                    $maxKb = $isVideo ? 2097152 : 10240;
-                    if ($value->getSize() > $maxKb * 1024) {
-                        $fail($isVideo
-                            ? 'Videos must be 2GB or smaller.'
-                            : 'Images must be 10MB or smaller.');
-                    }
-                },
-            ],
-            // Lets the "Edit" form clear an attached image/video without
+            // Uploading here REPLACES the post's entire media set (matches
+            // the old single-attachment "Replace image/video" behaviour),
+            // not appends to it.
+            'media' => ['sometimes', 'array', 'max:10'],
+            'media.*' => $this->mediaItemRules(),
+            // Lets the "Edit" form clear all attached media without
             // uploading a replacement.
             'remove_media' => ['sometimes', 'boolean'],
             // Reschedule a scheduled/draft post, or pass null to cancel the
             // schedule and drop it back to a draft. `sometimes` so posts
             // that aren't touching their schedule don't need to send this.
             'scheduled_at' => ['sometimes', 'nullable', 'date', 'after:now'],
+            // Per-platform caption edits, keyed by post_platform id (not
+            // social_account_id — unlike store(), the platforms already
+            // exist here). An empty string clears back to the shared content.
+            'platform_content' => ['sometimes', 'array'],
+            'platform_content.*' => ['nullable', 'string'],
         ]);
 
         $updates = [];
@@ -209,27 +264,36 @@ class PostController extends Controller
             abort(422, 'Post content cannot be empty.');
         }
 
+        $mediaChanged = false;
+
         if ($request->hasFile('media')) {
-            if ($post->media_path) {
-                Storage::disk('public')->delete($post->media_path);
-            }
-            $file = $request->file('media');
-            $updates['media_path'] = $file->store('posts', 'public');
-            $updates['media_type'] = $this->isVideoUpload($file) ? 'video' : 'image';
+            $this->deleteAllMedia($post);
+            $this->storeMedia($post, $request->file('media'));
+            $mediaChanged = true;
         } elseif ($request->boolean('remove_media')) {
-            if ($post->media_path) {
-                Storage::disk('public')->delete($post->media_path);
-            }
-            $updates['media_path'] = null;
-            $updates['media_type'] = null;
+            $this->deleteAllMedia($post);
+            $mediaChanged = true;
         }
 
         if (! empty($updates)) {
             $post->update($updates);
+        }
+        if (! empty($updates) || $mediaChanged) {
             ActivityLogger::log($request->user(), 'post_edited', "Edited post #{$post->id}.", ['post_id' => $post->id]);
         }
 
-        return response()->json($post->load('platforms.socialAccount'));
+        if (array_key_exists('platform_content', $data)) {
+            foreach ($data['platform_content'] as $postPlatformId => $override) {
+                $postPlatform = $post->platforms->firstWhere('id', (int) $postPlatformId);
+                if (! $postPlatform) {
+                    continue;
+                }
+                $override = trim((string) $override);
+                $postPlatform->update(['content_override' => $override !== '' ? $override : null]);
+            }
+        }
+
+        return response()->json($post->load('platforms.socialAccount', 'media'));
     }
 
     public function retryPlatform(Request $request, Post $post, PostPlatform $postPlatform)
@@ -240,7 +304,7 @@ class PostController extends Controller
         $this->publishingService->publishToOnePlatform($postPlatform);
         $this->publishingService->refreshPostStatus($post);
 
-        return response()->json($post->load('platforms.socialAccount'));
+        return response()->json($post->load('platforms.socialAccount', 'media'));
     }
 
     /**
@@ -260,10 +324,7 @@ class PostController extends Controller
     {
         abort_unless($post->user_id === $request->user()->id, 403);
 
-        if ($post->media_path) {
-            Storage::disk('public')->delete($post->media_path);
-        }
-
+        $this->deleteAllMedia($post);
         $post->delete();
 
         return response()->json(['message' => 'Post deleted.']);

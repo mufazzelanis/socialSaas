@@ -13,6 +13,7 @@ class PostPlatform extends Model
         'post_id',
         'social_account_id',
         'platform',
+        'content_override',
         'status',
         'platform_post_id',
         'post_url',

@@ -4,6 +4,7 @@ namespace App\Services\Publishers;
 
 use App\Models\Post;
 use App\Models\SocialAccount;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,7 +17,7 @@ class TelegramPublisher implements SocialPublisherInterface
     // reason instead of a confusing error partway through a large upload.
     protected const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 
-    public function publish(SocialAccount $account, Post $post): PublishResult
+    public function publish(SocialAccount $account, Post $post, string $content): PublishResult
     {
         $botToken = $account->access_token; // bot token stored here
         $chatId = $account->account_id;     // channel/chat id stored here
@@ -25,16 +26,25 @@ class TelegramPublisher implements SocialPublisherInterface
             return PublishResult::fail('Telegram bot token or chat id is missing.');
         }
 
-        if ($post->media_path && Storage::disk('public')->size($post->media_path) > self::MAX_UPLOAD_BYTES) {
-            return PublishResult::fail('This file is too large for Telegram — its Bot API only accepts files up to 50MB, regardless of the size allowed elsewhere in this app.');
+        $items = $post->mediaItems()->filter(fn (array $item) => Storage::disk('public')->exists($item['path']));
+
+        foreach ($items as $item) {
+            if (Storage::disk('public')->size($item['path']) > self::MAX_UPLOAD_BYTES) {
+                return PublishResult::fail('This file is too large for Telegram — its Bot API only accepts files up to 50MB, regardless of the size allowed elsewhere in this app.');
+            }
         }
 
         try {
-            if ($post->media_path && Storage::disk('public')->exists($post->media_path)) {
-                $isVideo = $post->media_type === 'video';
+            if ($items->count() > 1) {
+                return $this->publishMediaGroup($account, $botToken, $chatId, $items, $content);
+            }
+
+            if ($items->isNotEmpty()) {
+                $item = $items->first();
+                $isVideo = $item['type'] === 'video';
                 $field = $isVideo ? 'video' : 'photo';
                 $endpoint = "https://api.telegram.org/bot{$botToken}/".($isVideo ? 'sendVideo' : 'sendPhoto');
-                $absolutePath = Storage::disk('public')->path($post->media_path);
+                $absolutePath = Storage::disk('public')->path($item['path']);
 
                 // Stream the file rather than loading it into memory —
                 // important now that uploads can be large (up to 2GB
@@ -46,14 +56,14 @@ class TelegramPublisher implements SocialPublisherInterface
                     basename($absolutePath)
                 )->asMultipart()->post($endpoint, [
                     ['name' => 'chat_id', 'contents' => $chatId],
-                    ['name' => 'caption', 'contents' => $post->content],
+                    ['name' => 'caption', 'contents' => $content],
                 ]);
             } else {
                 $endpoint = "https://api.telegram.org/bot{$botToken}/sendMessage";
 
                 $response = Http::post($endpoint, [
                     'chat_id' => $chatId,
-                    'text' => $post->content,
+                    'text' => $content,
                 ]);
             }
 
@@ -75,6 +85,51 @@ class TelegramPublisher implements SocialPublisherInterface
         } catch (\Throwable $e) {
             return PublishResult::fail($e->getMessage());
         }
+    }
+
+    /**
+     * Sends 2-10 items in one message via sendMediaGroup — Telegram only
+     * shows the caption on the FIRST item, the rest go captionless (that's
+     * the API's own behaviour, not a limitation of this code).
+     */
+    protected function publishMediaGroup(SocialAccount $account, string $botToken, string $chatId, Collection $items, string $content): PublishResult
+    {
+        $endpoint = "https://api.telegram.org/bot{$botToken}/sendMediaGroup";
+        $mediaDescriptor = [];
+        $request = Http::asMultipart();
+
+        foreach ($items->values() as $i => $item) {
+            $isVideo = $item['type'] === 'video';
+            $attachName = "item{$i}";
+
+            $entry = ['type' => $isVideo ? 'video' : 'photo', 'media' => "attach://{$attachName}"];
+            if ($i === 0) {
+                $entry['caption'] = $content;
+            }
+            $mediaDescriptor[] = $entry;
+
+            $absolutePath = Storage::disk('public')->path($item['path']);
+            $request = $request->attach($attachName, fopen($absolutePath, 'r'), basename($absolutePath));
+        }
+
+        $response = $request->post($endpoint, [
+            ['name' => 'chat_id', 'contents' => $chatId],
+            ['name' => 'media', 'contents' => json_encode($mediaDescriptor)],
+        ]);
+
+        $data = $response->json();
+
+        if (! $response->successful() || empty($data['ok'])) {
+            return PublishResult::fail($data['description'] ?? 'Unknown Telegram API error.');
+        }
+
+        // sendMediaGroup returns one Message per item — link/report the first.
+        $messageId = $data['result'][0]['message_id'] ?? null;
+
+        return PublishResult::ok(
+            platformPostId: $messageId ? (string) $messageId : null,
+            postUrl: $this->buildPostUrl($account, $messageId),
+        );
     }
 
     protected function buildPostUrl(SocialAccount $account, ?int $messageId): ?string

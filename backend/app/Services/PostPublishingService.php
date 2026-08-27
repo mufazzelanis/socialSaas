@@ -42,7 +42,8 @@ class PostPublishingService
 
         try {
             $publisher = PublisherFactory::make($postPlatform->platform);
-            $result = $publisher->publish($account, $post);
+            $content = $postPlatform->content_override ?? $post->content;
+            $result = $publisher->publish($account, $post, $content);
 
             if ($result->success) {
                 $postPlatform->update([

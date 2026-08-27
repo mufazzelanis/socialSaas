@@ -5,6 +5,7 @@ import AdSlot from '../components/AdSlot';
 import api from '../api/client';
 import RichTextEditor from '../components/RichTextEditor';
 import DateTimePicker from '../components/DateTimePicker';
+import Icon from '../components/Icon';
 
 const PLATFORM_LABELS = {
   telegram: 'Telegram',
@@ -15,6 +16,7 @@ const PLATFORM_LABELS = {
 
 const MAX_VIDEO_MB = 2048; // 2GB — matches the backend cap
 const MAX_IMAGE_MB = 10;
+const MAX_FILES = 10; // matches the backend's `media' => ['array', 'max:10']`
 
 function isTextEmpty(html) {
   return html.replace(/<[^>]*>/g, '').trim() === '';
@@ -36,14 +38,22 @@ export default function CreatePost() {
   const [accounts, setAccounts] = useState([]);
   const [selected, setSelected] = useState([]);
   const [contentHtml, setContentHtml] = useState('');
-  const [media, setMedia] = useState(null);
-  const [mediaKind, setMediaKind] = useState(null); // 'image' | 'video'
-  const [mediaPreview, setMediaPreview] = useState(null);
+  // [{ file, kind: 'image'|'video', preview: objectURL }, ...] — 1 item
+  // behaves exactly like the old single-attachment composer; 2+ becomes a
+  // carousel/album/media-group depending on what each selected platform
+  // supports (see each backend Publisher for the specifics).
+  const [mediaFiles, setMediaFiles] = useState([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   // 'now' | 'schedule' | 'draft'
   const [publishMode, setPublishMode] = useState('now');
   const [scheduledAt, setScheduledAt] = useState('');
+  // Per-platform caption customization: which accounts have it turned on,
+  // and what each one's override text currently is. Keyed by account id —
+  // an account with customizing[id] off (or blank text) just uses the
+  // shared content above, same as before this existed.
+  const [customizing, setCustomizing] = useState({});
+  const [overrides, setOverrides] = useState({});
 
   useEffect(() => {
     api.get('/social-accounts').then((res) => setAccounts(res.data));
@@ -55,30 +65,46 @@ export default function CreatePost() {
     );
   };
 
+  const toggleCustomize = (id) => {
+    setCustomizing((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // Picking files always replaces the current selection (native <input>
+  // behaviour) — remove individual items with the × on each thumbnail
+  // instead of re-picking to prune one out.
   const handleMediaChange = (e) => {
-    const file = e.target.files?.[0] || null;
+    const files = Array.from(e.target.files || []);
     setError('');
 
-    if (!file) {
-      setMedia(null);
-      setMediaKind(null);
-      setMediaPreview(null);
-      return;
-    }
+    if (files.length === 0) return;
 
-    const kind = file.type.startsWith('video/') ? 'video' : 'image';
-    const maxMb = kind === 'video' ? MAX_VIDEO_MB : MAX_IMAGE_MB;
-
-    if (file.size > maxMb * 1024 * 1024) {
-      const limitLabel = kind === 'video' ? '2GB' : `${maxMb}MB`;
-      setError(`That ${kind} is too large — max ${limitLabel}.`);
+    if (files.length > MAX_FILES) {
+      setError(`You can attach up to ${MAX_FILES} files.`);
       e.target.value = '';
       return;
     }
 
-    setMedia(file);
-    setMediaKind(kind);
-    setMediaPreview(URL.createObjectURL(file));
+    const next = [];
+    for (const file of files) {
+      const kind = file.type.startsWith('video/') ? 'video' : 'image';
+      const maxMb = kind === 'video' ? MAX_VIDEO_MB : MAX_IMAGE_MB;
+
+      if (file.size > maxMb * 1024 * 1024) {
+        const limitLabel = kind === 'video' ? '2GB' : `${maxMb}MB`;
+        setError(`"${file.name}" is too large — max ${limitLabel} for a ${kind}.`);
+        e.target.value = '';
+        return;
+      }
+
+      next.push({ file, kind, preview: URL.createObjectURL(file) });
+    }
+
+    setMediaFiles(next);
+    e.target.value = ''; // lets picking the exact same file(s) again re-fire onChange
+  };
+
+  const removeMediaFile = (index) => {
+    setMediaFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
@@ -102,8 +128,13 @@ export default function CreatePost() {
     try {
       const form = new FormData();
       form.append('content_html', contentHtml);
-      selected.forEach((id) => form.append('social_account_ids[]', id));
-      if (media) form.append('media', media);
+      selected.forEach((id) => {
+        form.append('social_account_ids[]', id);
+        if (customizing[id] && overrides[id]?.trim()) {
+          form.append(`platform_content[${id}]`, overrides[id]);
+        }
+      });
+      mediaFiles.forEach((m) => form.append('media[]', m.file));
 
       if (publishMode === 'schedule') {
         form.append('publish_now', '0');
@@ -150,21 +181,36 @@ export default function CreatePost() {
           </label>
 
           <label className="field">
-            <span>Image or Video (optional)</span>
-            <input type="file" accept="image/*,video/*" onChange={handleMediaChange} />
+            <span>Images or Video (optional)</span>
+            <input type="file" accept="image/*,video/*" multiple onChange={handleMediaChange} />
             <span className="muted small">
-              Images up to {MAX_IMAGE_MB}MB, videos up to 2GB (any common format — mp4, mov, avi,
-              webm, mkv and more). Note: Telegram itself only accepts files up to 50MB no matter
-              what's uploaded here. Instagram requires media (no text-only posts there).
+              Up to {MAX_FILES} files — images up to {MAX_IMAGE_MB}MB each, videos up to 2GB (any
+              common format — mp4, mov, avi, webm, mkv and more). 2+ files becomes a carousel/
+              album where each platform supports one. Telegram itself only accepts files up to
+              50MB no matter what's uploaded here. Instagram requires media (no text-only posts).
             </span>
           </label>
 
-          {mediaPreview && (
-            mediaKind === 'video' ? (
-              <video src={mediaPreview} controls className="media-preview" />
-            ) : (
-              <img src={mediaPreview} alt="preview" className="media-preview" />
-            )
+          {mediaFiles.length > 0 && (
+            <div className="media-thumb-grid">
+              {mediaFiles.map((m, i) => (
+                <div className="media-thumb" key={m.preview}>
+                  {m.kind === 'video' ? (
+                    <video src={m.preview} className="media-thumb-img" muted />
+                  ) : (
+                    <img src={m.preview} alt="" className="media-thumb-img" />
+                  )}
+                  <button
+                    type="button"
+                    className="media-thumb-remove"
+                    onClick={() => removeMediaFile(i)}
+                    aria-label="Remove this file"
+                  >
+                    <Icon name="x" size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
 
           <div className="field">
@@ -185,6 +231,41 @@ export default function CreatePost() {
               ))}
             </div>
           </div>
+
+          {selected.length > 0 && (
+            <div className="field">
+              <span>Customize per platform (optional)</span>
+              <div className="platform-override-list">
+                {accounts
+                  .filter((acc) => selected.includes(acc.id))
+                  .map((acc) => (
+                    <div className="platform-override-item" key={acc.id}>
+                      <label className="platform-override-toggle">
+                        <input
+                          type="checkbox"
+                          checked={!!customizing[acc.id]}
+                          onChange={() => toggleCustomize(acc.id)}
+                        />
+                        <span className={`platform-badge platform-${acc.platform}`}>
+                          {PLATFORM_LABELS[acc.platform] || acc.platform}
+                        </span>
+                        <span className="muted small">Different caption for {acc.account_name}</span>
+                      </label>
+                      {customizing[acc.id] && (
+                        <textarea
+                          rows={3}
+                          placeholder="Write a caption just for this platform — leave blank to fall back to the main content above"
+                          value={overrides[acc.id] || ''}
+                          onChange={(e) =>
+                            setOverrides((prev) => ({ ...prev, [acc.id]: e.target.value }))
+                          }
+                        />
+                      )}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
 
           <div className="field">
             <span>When?</span>
@@ -245,12 +326,23 @@ export default function CreatePost() {
             ) : (
               <div className="mock-post-body" dangerouslySetInnerHTML={{ __html: contentHtml }} />
             )}
-            {mediaPreview && (
-              mediaKind === 'video' ? (
-                <video src={mediaPreview} controls className="mock-post-image" />
+            {mediaFiles.length === 1 && (
+              mediaFiles[0].kind === 'video' ? (
+                <video src={mediaFiles[0].preview} controls className="mock-post-image" />
               ) : (
-                <img src={mediaPreview} alt="preview" className="mock-post-image" />
+                <img src={mediaFiles[0].preview} alt="preview" className="mock-post-image" />
               )
+            )}
+            {mediaFiles.length > 1 && (
+              <div className="mock-post-carousel">
+                {mediaFiles.map((m) =>
+                  m.kind === 'video' ? (
+                    <video src={m.preview} key={m.preview} className="mock-post-carousel-item" muted />
+                  ) : (
+                    <img src={m.preview} alt="" key={m.preview} className="mock-post-carousel-item" />
+                  )
+                )}
+              </div>
             )}
           </div>
           <p className="muted small">
