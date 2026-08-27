@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,6 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (Schedule $schedule): void {
+        // Checks every minute for scheduled posts whose time has come.
+        // This only fires at all if something is actually running
+        // `php artisan schedule:run` once a minute — a real system cron
+        // entry on the server, not something this app starts on its own.
+        $schedule->command('posts:publish-due')->everyMinute()->withoutOverlapping();
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         // The local Apache vhost (socialsaas.test) terminates TLS then
         // proxies to `php artisan serve` over plain HTTP on the same

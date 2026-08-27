@@ -19,6 +19,17 @@ function isTextEmpty(html) {
   return html.replace(/<[^>]*>/g, '').trim() === '';
 }
 
+// Minimum lead time before a schedule is accepted — matches the backend's
+// `after:now` rule closely enough in spirit; a couple of minutes of slack
+// avoids a round-trip failing just because a second ticked over in transit.
+function minScheduleValue() {
+  const d = new Date(Date.now() + 2 * 60 * 1000);
+  d.setSeconds(0, 0);
+  // <input type="datetime-local"> wants local time with no timezone suffix.
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function CreatePost() {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState([]);
@@ -29,6 +40,9 @@ export default function CreatePost() {
   const [mediaPreview, setMediaPreview] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // 'now' | 'schedule' | 'draft'
+  const [publishMode, setPublishMode] = useState('now');
+  const [scheduledAt, setScheduledAt] = useState('');
 
   useEffect(() => {
     api.get('/social-accounts').then((res) => setAccounts(res.data));
@@ -78,14 +92,26 @@ export default function CreatePost() {
       setError('Select at least one platform to publish to.');
       return;
     }
+    if (publishMode === 'schedule' && !scheduledAt) {
+      setError('Pick a date and time to schedule this post for.');
+      return;
+    }
 
     setBusy(true);
     try {
       const form = new FormData();
       form.append('content_html', contentHtml);
-      form.append('publish_now', '1');
       selected.forEach((id) => form.append('social_account_ids[]', id));
       if (media) form.append('media', media);
+
+      if (publishMode === 'schedule') {
+        form.append('publish_now', '0');
+        // datetime-local has no timezone info — treat it as the browser's
+        // local time and convert to a real instant (ISO/UTC) before sending.
+        form.append('scheduled_at', new Date(scheduledAt).toISOString());
+      } else {
+        form.append('publish_now', publishMode === 'now' ? '1' : '0');
+      }
 
       const res = await api.post('/posts', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -159,8 +185,51 @@ export default function CreatePost() {
             </div>
           </div>
 
+          <div className="field">
+            <span>When?</span>
+            <div className="publish-mode-tabs">
+              <button
+                type="button"
+                className={'publish-mode-tab' + (publishMode === 'now' ? ' active' : '')}
+                onClick={() => setPublishMode('now')}
+              >
+                Publish Now
+              </button>
+              <button
+                type="button"
+                className={'publish-mode-tab' + (publishMode === 'schedule' ? ' active' : '')}
+                onClick={() => setPublishMode('schedule')}
+              >
+                Schedule
+              </button>
+              <button
+                type="button"
+                className={'publish-mode-tab' + (publishMode === 'draft' ? ' active' : '')}
+                onClick={() => setPublishMode('draft')}
+              >
+                Save Draft
+              </button>
+            </div>
+
+            {publishMode === 'schedule' && (
+              <input
+                type="datetime-local"
+                className="mt-2"
+                min={minScheduleValue()}
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+              />
+            )}
+          </div>
+
           <button className="btn btn-primary btn-block" disabled={busy}>
-            {busy ? 'Publishing...' : 'Publish Now'}
+            {busy
+              ? 'Saving...'
+              : publishMode === 'now'
+                ? 'Publish Now'
+                : publishMode === 'schedule'
+                  ? 'Schedule Post'
+                  : 'Save Draft'}
           </button>
         </form>
 

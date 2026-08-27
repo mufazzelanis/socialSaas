@@ -548,6 +548,9 @@
   .status-draft {
     @apply bg-slate-100 text-slate-600;
   }
+  .status-scheduled {
+    @apply bg-blue-100 text-blue-700;
+  }
   .status-publishing {
     @apply bg-yellow-100 text-yellow-800;
   }
@@ -607,6 +610,20 @@
   }
   .media-preview {
     @apply max-w-full max-h-56 rounded-lg mb-4 object-cover;
+  }
+
+  /* Publish Now / Schedule / Save Draft segmented control on the composer. */
+  .publish-mode-tabs {
+    @apply flex flex-wrap gap-2;
+  }
+  .publish-mode-tab {
+    @apply border border-border rounded-full px-3.5 py-1.5 text-[0.85rem] font-medium bg-surface text-text-muted cursor-pointer transition-all;
+  }
+  .publish-mode-tab:hover {
+    @apply border-primary/40 text-text;
+  }
+  .publish-mode-tab.active {
+    @apply border-primary bg-primary/10 text-primary;
   }
   .preview-card {
     @apply lg:sticky lg:top-20;

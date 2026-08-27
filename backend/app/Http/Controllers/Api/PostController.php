@@ -7,12 +7,16 @@ use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\ActivityLogger;
-use App\Services\Publishers\PublisherFactory;
+use App\Services\PostPublishingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
+    public function __construct(protected PostPublishingService $publishingService)
+    {
+    }
+
     // Matches the `mimes:` list below. Deciding "is this a video" from the
     // file extension rather than the sniffed MIME type is deliberate — PHP's
     // fileinfo detection is inconsistent across containers/codecs (some MP4s
@@ -77,6 +81,10 @@ class PostController extends Controller
                 },
             ],
             'publish_now' => ['sometimes', 'boolean'],
+            // A future timestamp to auto-publish at instead of right now.
+            // When present it always wins over publish_now — you can't both
+            // schedule and immediately publish the same post.
+            'scheduled_at' => ['nullable', 'date', 'after:now'],
         ]);
 
         $accounts = SocialAccount::whereIn('id', $data['social_account_ids'])
@@ -105,11 +113,14 @@ class PostController extends Controller
             $mediaType = $this->isVideoUpload($file) ? 'video' : 'image';
         }
 
+        $scheduledAt = $data['scheduled_at'] ?? null;
+
         $post = $request->user()->posts()->create([
             'content' => $content,
             'media_path' => $mediaPath,
             'media_type' => $mediaType,
-            'status' => 'draft',
+            'status' => $scheduledAt ? 'scheduled' : 'draft',
+            'scheduled_at' => $scheduledAt,
         ]);
 
         foreach ($accounts as $account) {
@@ -122,8 +133,10 @@ class PostController extends Controller
 
         ActivityLogger::log($request->user(), 'post_created', "Created post #{$post->id}.", ['post_id' => $post->id]);
 
-        if ($request->boolean('publish_now', true)) {
-            $this->publishPost($post);
+        // A schedule always wins — even if the composer somehow also sent
+        // publish_now, we never publish immediately once a future time is set.
+        if (! $scheduledAt && $request->boolean('publish_now', true)) {
+            $this->publishingService->publishPost($post);
         }
 
         return response()->json($post->load('platforms.socialAccount'), 201);
@@ -133,7 +146,7 @@ class PostController extends Controller
     {
         abort_unless($post->user_id === $request->user()->id, 403);
 
-        $this->publishPost($post);
+        $this->publishingService->publishPost($post);
 
         return response()->json($post->load('platforms.socialAccount'));
     }
@@ -168,9 +181,23 @@ class PostController extends Controller
             // Lets the "Edit" form clear an attached image/video without
             // uploading a replacement.
             'remove_media' => ['sometimes', 'boolean'],
+            // Reschedule a scheduled/draft post, or pass null to cancel the
+            // schedule and drop it back to a draft. `sometimes` so posts
+            // that aren't touching their schedule don't need to send this.
+            'scheduled_at' => ['sometimes', 'nullable', 'date', 'after:now'],
         ]);
 
         $updates = [];
+
+        if (array_key_exists('scheduled_at', $data)) {
+            abort_unless(
+                in_array($post->status, ['draft', 'scheduled'], true),
+                422,
+                'Only a draft or scheduled post can have its schedule changed.'
+            );
+            $updates['scheduled_at'] = $data['scheduled_at'];
+            $updates['status'] = $data['scheduled_at'] ? 'scheduled' : 'draft';
+        }
 
         if (array_key_exists('content_html', $data) && $data['content_html'] !== null) {
             $updates['content'] = $this->htmlToPlainText($data['content_html']);
@@ -210,79 +237,10 @@ class PostController extends Controller
         abort_unless($post->user_id === $request->user()->id, 403);
         abort_unless($postPlatform->post_id === $post->id, 404);
 
-        $this->publishToOnePlatform($postPlatform);
-        $this->refreshPostStatus($post);
+        $this->publishingService->publishToOnePlatform($postPlatform);
+        $this->publishingService->refreshPostStatus($post);
 
         return response()->json($post->load('platforms.socialAccount'));
-    }
-
-    protected function publishPost(Post $post): void
-    {
-        $post->update(['status' => 'publishing']);
-
-        foreach ($post->platforms as $postPlatform) {
-            $this->publishToOnePlatform($postPlatform);
-        }
-
-        $this->refreshPostStatus($post);
-    }
-
-    protected function publishToOnePlatform(PostPlatform $postPlatform): void
-    {
-        $post = $postPlatform->post;
-        $account = $postPlatform->socialAccount;
-
-        if (! $post->user->hasPlatformPermission($postPlatform->platform)) {
-            $postPlatform->update([
-                'status' => 'failed',
-                'error_message' => 'Permission for this platform was revoked.',
-            ]);
-
-            return;
-        }
-
-        try {
-            $publisher = PublisherFactory::make($postPlatform->platform);
-            $result = $publisher->publish($account, $post);
-
-            if ($result->success) {
-                $postPlatform->update([
-                    'status' => 'published',
-                    'platform_post_id' => $result->platformPostId,
-                    'post_url' => $result->postUrl,
-                    'error_message' => null,
-                    'published_at' => now(),
-                ]);
-            } else {
-                $postPlatform->update([
-                    'status' => 'failed',
-                    'error_message' => $result->errorMessage,
-                ]);
-            }
-        } catch (\Throwable $e) {
-            $postPlatform->update([
-                'status' => 'failed',
-                'error_message' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    protected function refreshPostStatus(Post $post): void
-    {
-        $statuses = $post->platforms()->pluck('status');
-
-        $status = match (true) {
-            $statuses->every(fn ($s) => $s === 'published') => 'published',
-            $statuses->contains('published') => 'partial',
-            default => 'failed',
-        };
-
-        $post->update([
-            'status' => $status,
-            'published_at' => $status !== 'failed' ? now() : null,
-        ]);
-
-        ActivityLogger::log($post->user, "post_{$status}", "Post #{$post->id} finished publishing with status [{$status}].", ['post_id' => $post->id]);
     }
 
     /**

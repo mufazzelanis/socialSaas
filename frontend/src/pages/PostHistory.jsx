@@ -12,12 +12,20 @@ const PLATFORM_LABELS = {
 
 const STATUS_LABELS = {
   draft: 'Draft',
+  scheduled: 'Scheduled',
   publishing: 'Publishing...',
   published: 'Published',
   partial: 'Partially Published',
   failed: 'Failed',
   pending: 'Pending',
 };
+
+// <input type="datetime-local"> takes local time with no timezone suffix.
+function toDatetimeLocalValue(isoString) {
+  const d = new Date(isoString);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export default function PostHistory() {
   const [posts, setPosts] = useState([]);
@@ -28,6 +36,9 @@ export default function PostHistory() {
   const [editMedia, setEditMedia] = useState(null);
   const [editRemoveMedia, setEditRemoveMedia] = useState(false);
   const [editError, setEditError] = useState('');
+  const [reschedulingId, setReschedulingId] = useState(null);
+  const [rescheduleValue, setRescheduleValue] = useState('');
+  const [scheduleError, setScheduleError] = useState('');
 
   // `silent` skips the loading spinner — used after retry/delete/save so the
   // list just quietly updates in place instead of flashing blank first.
@@ -57,6 +68,61 @@ export default function PostHistory() {
     if (!window.confirm('Delete this post?')) return;
     await api.delete(`/posts/${postId}`);
     loadPosts(true);
+  };
+
+  const publishNow = async (postId) => {
+    const key = `publish-${postId}`;
+    setBusyKey(key);
+    try {
+      await api.post(`/posts/${postId}/publish`);
+      loadPosts(true);
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const startReschedule = (post) => {
+    setReschedulingId(post.id);
+    setRescheduleValue(post.scheduled_at ? toDatetimeLocalValue(post.scheduled_at) : '');
+    setScheduleError('');
+  };
+
+  const cancelReschedule = () => {
+    setReschedulingId(null);
+    setScheduleError('');
+  };
+
+  const saveReschedule = async (post) => {
+    if (!rescheduleValue) {
+      setScheduleError('Pick a date and time first.');
+      return;
+    }
+    const key = `schedule-${post.id}`;
+    setBusyKey(key);
+    setScheduleError('');
+    try {
+      await api.post(`/posts/${post.id}`, {
+        scheduled_at: new Date(rescheduleValue).toISOString(),
+      });
+      setReschedulingId(null);
+      loadPosts(true);
+    } catch (err) {
+      setScheduleError(err.response?.data?.message || 'Could not reschedule this post.');
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  // Drops a scheduled post back to a draft instead of publishing it.
+  const cancelSchedule = async (post) => {
+    const key = `schedule-${post.id}`;
+    setBusyKey(key);
+    try {
+      await api.post(`/posts/${post.id}`, { scheduled_at: null });
+      loadPosts(true);
+    } finally {
+      setBusyKey(null);
+    }
   };
 
   const startEdit = (post) => {
@@ -131,8 +197,33 @@ export default function PostHistory() {
                   {STATUS_LABELS[post.status] || post.status}
                 </span>
                 <span className="muted small">
-                  {new Date(post.created_at).toLocaleString()}
+                  {post.status === 'scheduled' && post.scheduled_at
+                    ? `Scheduled for ${new Date(post.scheduled_at).toLocaleString()}`
+                    : new Date(post.created_at).toLocaleString()}
                 </span>
+                {(post.status === 'draft' || post.status === 'scheduled') && (
+                  <button
+                    className="btn btn-ghost btn-small"
+                    disabled={busyKey === `publish-${post.id}`}
+                    onClick={() => publishNow(post.id)}
+                  >
+                    {busyKey === `publish-${post.id}` ? 'Publishing...' : 'Publish Now'}
+                  </button>
+                )}
+                {(post.status === 'draft' || post.status === 'scheduled') && reschedulingId !== post.id && (
+                  <button className="btn btn-ghost btn-small" onClick={() => startReschedule(post)}>
+                    {post.status === 'scheduled' ? 'Reschedule' : 'Schedule'}
+                  </button>
+                )}
+                {post.status === 'scheduled' && (
+                  <button
+                    className="btn btn-ghost btn-small"
+                    disabled={busyKey === `schedule-${post.id}`}
+                    onClick={() => cancelSchedule(post)}
+                  >
+                    Cancel schedule
+                  </button>
+                )}
                 {editingId !== post.id && (
                   <button
                     className="btn btn-ghost btn-small"
@@ -148,6 +239,33 @@ export default function PostHistory() {
                   Delete
                 </button>
               </div>
+
+              {reschedulingId === post.id && (
+                <div className="post-edit-form">
+                  {scheduleError && <div className="alert alert-error">{scheduleError}</div>}
+                  <label className="field">
+                    <span>Publish at</span>
+                    <input
+                      type="datetime-local"
+                      min={toDatetimeLocalValue(new Date(Date.now() + 60 * 1000).toISOString())}
+                      value={rescheduleValue}
+                      onChange={(e) => setRescheduleValue(e.target.value)}
+                    />
+                  </label>
+                  <div className="post-edit-actions">
+                    <button
+                      className="btn btn-primary btn-small"
+                      disabled={busyKey === `schedule-${post.id}`}
+                      onClick={() => saveReschedule(post)}
+                    >
+                      {busyKey === `schedule-${post.id}` ? 'Saving...' : 'Save Schedule'}
+                    </button>
+                    <button className="btn btn-ghost btn-small" onClick={cancelReschedule}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {editingId === post.id ? (
                 <div className="post-edit-form">
