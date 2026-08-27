@@ -119,6 +119,20 @@ export default function CreatePost() {
     setCustomizing((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  // Shared validation for one file becoming a media-thumb entry — used by
+  // the file picker, and by paste/drag-drop below so a screenshot copied
+  // from elsewhere gets exactly the same size/type checks a browsed file
+  // would.
+  const buildMediaEntry = (file) => {
+    const kind = file.type.startsWith('video/') ? 'video' : 'image';
+    const maxMb = kind === 'video' ? MAX_VIDEO_MB : MAX_IMAGE_MB;
+    if (file.size > maxMb * 1024 * 1024) {
+      const limitLabel = kind === 'video' ? '2GB' : `${maxMb}MB`;
+      return { error: `"${file.name || 'pasted image'}" is too large — max ${limitLabel} for a ${kind}.` };
+    }
+    return { entry: { file, kind, preview: URL.createObjectURL(file) } };
+  };
+
   // Picking files always replaces the current selection (native <input>
   // behaviour) — remove individual items with the × on each thumbnail
   // instead of re-picking to prune one out.
@@ -136,25 +150,64 @@ export default function CreatePost() {
 
     const next = [];
     for (const file of files) {
-      const kind = file.type.startsWith('video/') ? 'video' : 'image';
-      const maxMb = kind === 'video' ? MAX_VIDEO_MB : MAX_IMAGE_MB;
-
-      if (file.size > maxMb * 1024 * 1024) {
-        const limitLabel = kind === 'video' ? '2GB' : `${maxMb}MB`;
-        setError(`"${file.name}" is too large — max ${limitLabel} for a ${kind}.`);
+      const { entry, error: fileError } = buildMediaEntry(file);
+      if (fileError) {
+        setError(fileError);
         e.target.value = '';
         return;
       }
-
-      next.push({ file, kind, preview: URL.createObjectURL(file) });
+      next.push(entry);
     }
 
     setMediaFiles(next);
     e.target.value = ''; // lets picking the exact same file(s) again re-fire onChange
   };
 
+  // Pasting (or dragging) an image in — from the RichTextEditor toolbar's
+  // paste handler, or a per-platform caption textarea — ADDS to whatever's
+  // already attached instead of replacing it, since it's normally one quick
+  // image at a time rather than a deliberate "start over" pick.
+  const addMediaFiles = (newFiles) => {
+    const incoming = Array.from(newFiles || []);
+    if (incoming.length === 0) return;
+
+    setError('');
+    setMediaFiles((prev) => {
+      const next = [...prev];
+      for (const file of incoming) {
+        if (next.length >= MAX_FILES) {
+          setError(`You can attach up to ${MAX_FILES} files.`);
+          break;
+        }
+        const { entry, error: fileError } = buildMediaEntry(file);
+        if (fileError) {
+          setError(fileError);
+          continue;
+        }
+        next.push(entry);
+      }
+      return next;
+    });
+  };
+
   const removeMediaFile = (index) => {
     setMediaFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Shared by the per-platform caption textareas — a pasted image there
+  // shouldn't just vanish into a field that can't hold it; redirect it to
+  // the post's attachments instead, same as pasting in the main editor.
+  const handleTextareaPaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const images = Array.from(items)
+      .filter((item) => item.type.startsWith('image/'))
+      .map((item) => item.getAsFile())
+      .filter(Boolean);
+    if (images.length > 0) {
+      e.preventDefault();
+      addMediaFiles(images);
+    }
   };
 
   // What the preview should show for a given platform tab — the matching
@@ -261,7 +314,7 @@ export default function CreatePost() {
 
           <label className="field">
             <span>What's on your mind?</span>
-            <RichTextEditor value={contentHtml} onChange={setContentHtml} />
+            <RichTextEditor value={contentHtml} onChange={setContentHtml} onImagePaste={addMediaFiles} />
           </label>
 
           <label className="field">
@@ -272,6 +325,7 @@ export default function CreatePost() {
               common format — mp4, mov, avi, webm, mkv and more). 2+ files becomes a carousel/
               album where each platform supports one. Telegram itself only accepts files up to
               50MB no matter what's uploaded here. Instagram requires media (no text-only posts).
+              You can also just paste (Ctrl/Cmd+V) or drag an image straight into the text box above.
             </span>
           </label>
 
@@ -362,6 +416,7 @@ export default function CreatePost() {
                             onChange={(e) =>
                               setOverrides((prev) => ({ ...prev, [acc.id]: e.target.value }))
                             }
+                            onPaste={handleTextareaPaste}
                           />
                         )}
                       </div>

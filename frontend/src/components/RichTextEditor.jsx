@@ -19,7 +19,7 @@ function ToolbarButton({ active, onClick, label, title }) {
   );
 }
 
-export default function RichTextEditor({ value, onChange, placeholder }) {
+export default function RichTextEditor({ value, onChange, placeholder, onImagePaste }) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -29,6 +29,45 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
     content: value || '',
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
+    },
+    editorProps: {
+      // Facebook/Instagram/Telegram/LinkedIn all let you paste (or drag) an
+      // image straight into the post box instead of only browsing for a
+      // file — this content is going out as plain text anyway (see
+      // htmlToPlainText on the backend), so a pasted image is redirected to
+      // the post's attachments rather than embedded as inline editor content.
+      handlePaste: (view, event) => {
+        if (!onImagePaste) return false;
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+
+        const images = Array.from(items)
+          .filter((item) => item.type.startsWith('image/'))
+          .map((item) => item.getAsFile())
+          .filter(Boolean);
+
+        if (images.length === 0) return false;
+
+        event.preventDefault();
+        onImagePaste(images);
+        return true;
+      },
+      handleDrop: (view, event, slice, moved) => {
+        // `moved` means content dragged within the editor itself, not a
+        // file dropped in from outside — let TipTap handle that normally.
+        if (moved || !onImagePaste) return false;
+        const files = event.dataTransfer?.files;
+        if (!files || files.length === 0) return false;
+
+        const mediaFiles = Array.from(files).filter(
+          (f) => f.type.startsWith('image/') || f.type.startsWith('video/')
+        );
+        if (mediaFiles.length === 0) return false;
+
+        event.preventDefault();
+        onImagePaste(mediaFiles);
+        return true;
+      },
     },
   });
 
