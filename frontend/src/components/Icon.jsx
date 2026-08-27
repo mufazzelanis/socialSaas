@@ -81,6 +81,12 @@ const PATHS = {
     </>
   ),
   check: <path d="M5 13l4 4L19 7" />,
+  alert: (
+    <>
+      <path d="M10.3 3.86 1.82 18a1.5 1.5 0 0 0 1.3 2.25h17.76a1.5 1.5 0 0 0 1.3-2.25L13.7 3.86a1.5 1.5 0 0 0-2.6 0Z" />
+      <path d="M12 9v4M12 17h.01" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 20, className = '', strokeWidth = 2 }) {

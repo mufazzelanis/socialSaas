@@ -39,6 +39,7 @@ function FacebookMock({ name, content, media }) {
       </div>
       {content && <p className="pv-text">{content}</p>}
       <PreviewMedia media={media} />
+      <div className="pv-stats">24 · 5 comments · 2 shares</div>
       <div className="pv-actions">
         <span>
           <Icon name="thumbs-up" size={16} /> Like
@@ -69,6 +70,7 @@ function InstagramMock({ name, content, media }) {
         <Icon name="paper-plane" size={20} />
         <Icon name="bookmark" size={20} className="pv-ig-save" />
       </div>
+      <div className="pv-stats">128 likes</div>
       {content && (
         <p className="pv-text">
           <strong>{name}</strong> {content}
@@ -89,7 +91,7 @@ function TelegramMock({ name, content, media }) {
         <PreviewMedia media={media} />
         {content && <p className="pv-text">{content}</p>}
         <div className="pv-tg-meta">
-          12:34 <Icon name="check" size={12} />
+          1.2K views · 12:34 <Icon name="check" size={12} />
         </div>
       </div>
     </div>
@@ -110,6 +112,7 @@ function LinkedInMock({ name, content, media }) {
       </div>
       {content && <p className="pv-text">{content}</p>}
       <PreviewMedia media={media} />
+      <div className="pv-stats">45 reactions · 8 comments</div>
       <div className="pv-actions">
         <span>
           <Icon name="thumbs-up" size={16} /> Like

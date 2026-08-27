@@ -645,6 +645,21 @@
   .platform-override-item textarea {
     @apply mt-2;
   }
+  .platform-detail-header {
+    @apply flex flex-wrap items-center gap-2 mb-1.5;
+  }
+  .platform-char-count {
+    @apply ml-auto text-[0.75rem] text-text-muted tabular-nums;
+  }
+  .platform-char-count.over-limit {
+    @apply text-danger font-semibold;
+  }
+  .platform-detail-warning {
+    @apply flex items-center gap-1.5 text-[0.8rem] text-danger mb-2;
+  }
+  .platform-detail-note {
+    @apply mb-2 mt-0;
+  }
 
   /* Publish Now / Schedule / Save Draft segmented control on the composer. */
   .publish-mode-tabs {
@@ -741,6 +756,11 @@
   }
   .pv-media-badge {
     @apply absolute top-2 right-2 bg-black/60 text-white text-[0.7rem] font-semibold px-1.5 py-0.5 rounded-full;
+  }
+  /* Sample engagement numbers — purely illustrative (not real data), kept
+     visually quiet so they read as "example" rather than an actual stat. */
+  .pv-stats {
+    @apply text-[0.75rem] text-text-muted/70 mb-2 italic;
   }
   .pv-actions {
     @apply flex gap-4 pt-2.5 border-t border-border text-[0.8rem] text-text-muted;

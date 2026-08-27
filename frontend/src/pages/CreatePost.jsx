@@ -25,6 +25,33 @@ const PREVIEW_NAME_FALLBACK = {
   linkedin: 'Your LinkedIn Profile',
 };
 
+// Each platform's own real posting rules — not cosmetic differences, these
+// are what actually differs about publishing to each one, surfaced here so
+// the composer feels tailored per platform instead of one shared form.
+const PLATFORM_RULES = {
+  facebook: {
+    limit: 63206,
+    mediaRequired: false,
+    note: "Facebook only shows the first couple of lines before \"See more\" — lead with your hook.",
+  },
+  instagram: {
+    limit: 2200,
+    mediaRequired: true,
+    note: 'Instagram requires at least one image or video attached — text-only posts are rejected.',
+  },
+  telegram: {
+    limit: 4096,
+    limitWithMedia: 1024, // Telegram's own cap on a caption once media is attached
+    mediaRequired: false,
+    note: null,
+  },
+  linkedin: {
+    limit: 3000,
+    mediaRequired: false,
+    note: "LinkedIn also truncates to a couple of lines before \"...see more\" — keep the opener tight.",
+  },
+};
+
 // A rough client-side mirror of the backend's htmlToPlainText() (see
 // PostController) — the preview should show what will actually get
 // published (plain text, line breaks kept), not the rich-text HTML itself.
@@ -146,6 +173,22 @@ export default function CreatePost() {
   const previewNameFor = (platform) => {
     const acct = accounts.find((a) => a.platform === platform && selected.includes(a.id));
     return acct?.account_name || PREVIEW_NAME_FALLBACK[platform] || 'Your Page';
+  };
+
+  // The actual character count + limit for one selected account's content —
+  // its own override if it has one, else the shared content — against that
+  // platform's real limit (Telegram's own is tighter once media is attached).
+  const charInfoFor = (acc) => {
+    const rules = PLATFORM_RULES[acc.platform];
+    const text = customizing[acc.id] && overrides[acc.id]?.trim()
+      ? overrides[acc.id].trim()
+      : stripHtmlForPreview(contentHtml);
+    const limit =
+      acc.platform === 'telegram' && mediaFiles.length > 0 && rules.limitWithMedia
+        ? rules.limitWithMedia
+        : rules.limit;
+
+    return { count: text.length, limit, over: text.length > limit, rules };
   };
 
   const handleSubmit = async (e) => {
@@ -275,35 +318,55 @@ export default function CreatePost() {
 
           {selected.length > 0 && (
             <div className="field">
-              <span>Customize per platform (optional)</span>
+              <span>Platform details</span>
               <div className="platform-override-list">
                 {accounts
                   .filter((acc) => selected.includes(acc.id))
-                  .map((acc) => (
-                    <div className="platform-override-item" key={acc.id}>
-                      <label className="platform-override-toggle">
-                        <input
-                          type="checkbox"
-                          checked={!!customizing[acc.id]}
-                          onChange={() => toggleCustomize(acc.id)}
-                        />
-                        <span className={`platform-badge platform-${acc.platform}`}>
-                          {PLATFORM_LABELS[acc.platform] || acc.platform}
-                        </span>
-                        <span className="muted small">Different caption for {acc.account_name}</span>
-                      </label>
-                      {customizing[acc.id] && (
-                        <textarea
-                          rows={3}
-                          placeholder="Write a caption just for this platform — leave blank to fall back to the main content above"
-                          value={overrides[acc.id] || ''}
-                          onChange={(e) =>
-                            setOverrides((prev) => ({ ...prev, [acc.id]: e.target.value }))
-                          }
-                        />
-                      )}
-                    </div>
-                  ))}
+                  .map((acc) => {
+                    const { count, limit, over, rules } = charInfoFor(acc);
+                    const missingMedia = rules.mediaRequired && mediaFiles.length === 0;
+
+                    return (
+                      <div className="platform-override-item" key={acc.id}>
+                        <div className="platform-detail-header">
+                          <span className={`platform-badge platform-${acc.platform}`}>
+                            {PLATFORM_LABELS[acc.platform] || acc.platform}
+                          </span>
+                          <span className="muted small">{acc.account_name}</span>
+                          <span className={'platform-char-count' + (over ? ' over-limit' : '')}>
+                            {count.toLocaleString()} / {limit.toLocaleString()}
+                          </span>
+                        </div>
+
+                        {missingMedia && (
+                          <div className="platform-detail-warning">
+                            <Icon name="alert" size={14} />
+                            Requires an image or video attached — this platform will fail without one.
+                          </div>
+                        )}
+                        {rules.note && <p className="muted small platform-detail-note">{rules.note}</p>}
+
+                        <label className="platform-override-toggle">
+                          <input
+                            type="checkbox"
+                            checked={!!customizing[acc.id]}
+                            onChange={() => toggleCustomize(acc.id)}
+                          />
+                          <span className="muted small">Write a different caption just for this platform</span>
+                        </label>
+                        {customizing[acc.id] && (
+                          <textarea
+                            rows={3}
+                            placeholder="Write a caption just for this platform — leave blank to fall back to the main content above"
+                            value={overrides[acc.id] || ''}
+                            onChange={(e) =>
+                              setOverrides((prev) => ({ ...prev, [acc.id]: e.target.value }))
+                            }
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           )}
