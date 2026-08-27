@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Icon from './Icon';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -102,75 +103,77 @@ export default function DateTimePicker({ value, onChange, min, placeholder = 'Pi
         <span className={valueParsed ? '' : 'muted'}>{displayLabel}</span>
       </button>
 
-      {open && (
-        <div className="modal-overlay" onClick={() => setOpen(false)}>
-          <div className="modal-panel dt-picker-panel" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="modal-close" onClick={() => setOpen(false)} aria-label="Close">
-              <Icon name="x" size={18} />
-            </button>
-            <h3 className="dt-picker-title">Select Date &amp; Time</h3>
-
-            <div className="dt-picker-nav">
-              <button type="button" className="dt-picker-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">
-                <Icon name="chevron-left" size={18} />
+      {open &&
+        createPortal(
+          <div className="modal-overlay" onClick={() => setOpen(false)}>
+            <div className="modal-panel dt-picker-panel" onClick={(e) => e.stopPropagation()}>
+              <button type="button" className="modal-close" onClick={() => setOpen(false)} aria-label="Close">
+                <Icon name="x" size={18} />
               </button>
-              <span className="dt-picker-month">{viewDate.toLocaleDateString(undefined, MONTH_LABEL)}</span>
-              <button type="button" className="dt-picker-nav-btn" onClick={() => changeMonth(1)} aria-label="Next month">
-                <Icon name="chevron-right" size={18} />
-              </button>
-            </div>
+              <h3 className="dt-picker-title">Select Date &amp; Time</h3>
 
-            <div className="dt-picker-weekdays">
-              {WEEKDAYS.map((w) => (
-                <span key={w}>{w}</span>
-              ))}
-            </div>
-            <div className="dt-picker-grid">
-              {cells.map((cellDate) => {
-                const inMonth = cellDate.getMonth() === viewDate.getMonth();
-                const disabled = isDisabled(cellDate);
-                const isToday = sameDay(cellDate, today);
-                const isSelected = sameDay(cellDate, draftDate);
-                return (
-                  <button
-                    type="button"
-                    key={cellDate.toISOString()}
-                    disabled={disabled}
-                    onClick={() => setDraftDate(cellDate)}
-                    className={
-                      'dt-picker-day' +
-                      (!inMonth ? ' dt-picker-day--muted' : '') +
-                      (isToday ? ' dt-picker-day--today' : '') +
-                      (isSelected ? ' dt-picker-day--selected' : '')
-                    }
-                  >
-                    {cellDate.getDate()}
-                  </button>
-                );
-              })}
-            </div>
+              <div className="dt-picker-nav">
+                <button type="button" className="dt-picker-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">
+                  <Icon name="chevron-left" size={18} />
+                </button>
+                <span className="dt-picker-month">{viewDate.toLocaleDateString(undefined, MONTH_LABEL)}</span>
+                <button type="button" className="dt-picker-nav-btn" onClick={() => changeMonth(1)} aria-label="Next month">
+                  <Icon name="chevron-right" size={18} />
+                </button>
+              </div>
 
-            <label className="field mt-3">
-              <span>Time</span>
-              <input
-                type="time"
-                value={draftTime}
-                min={timeMin}
-                onChange={(e) => setDraftTime(e.target.value)}
-              />
-            </label>
+              <div className="dt-picker-weekdays">
+                {WEEKDAYS.map((w) => (
+                  <span key={w}>{w}</span>
+                ))}
+              </div>
+              <div className="dt-picker-grid">
+                {cells.map((cellDate) => {
+                  const inMonth = cellDate.getMonth() === viewDate.getMonth();
+                  const disabled = isDisabled(cellDate);
+                  const isToday = sameDay(cellDate, today);
+                  const isSelected = sameDay(cellDate, draftDate);
+                  return (
+                    <button
+                      type="button"
+                      key={cellDate.toISOString()}
+                      disabled={disabled}
+                      onClick={() => setDraftDate(cellDate)}
+                      className={
+                        'dt-picker-day' +
+                        (!inMonth ? ' dt-picker-day--muted' : '') +
+                        (isToday ? ' dt-picker-day--today' : '') +
+                        (isSelected ? ' dt-picker-day--selected' : '')
+                      }
+                    >
+                      {cellDate.getDate()}
+                    </button>
+                  );
+                })}
+              </div>
 
-            <div className="post-edit-actions mt-3">
-              <button type="button" className="btn btn-primary btn-small" disabled={!draftDate} onClick={confirm}>
-                Confirm
-              </button>
-              <button type="button" className="btn btn-ghost btn-small" onClick={() => setOpen(false)}>
-                Cancel
-              </button>
+              <label className="field mt-3">
+                <span>Time</span>
+                <input
+                  type="time"
+                  value={draftTime}
+                  min={timeMin}
+                  onChange={(e) => setDraftTime(e.target.value)}
+                />
+              </label>
+
+              <div className="post-edit-actions mt-3">
+                <button type="button" className="btn btn-primary btn-small" disabled={!draftDate} onClick={confirm}>
+                  Confirm
+                </button>
+                <button type="button" className="btn btn-ghost btn-small" onClick={() => setOpen(false)}>
+                  Cancel
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </>
   );
 }

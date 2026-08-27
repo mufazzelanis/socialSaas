@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useEffect } from 'react';
+import EmojiPicker from './EmojiPicker';
 
 function ToolbarButton({ active, onClick, label, title }) {
   return (
@@ -101,6 +102,7 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
           active={editor.isActive('link')}
           onClick={setLink}
         />
+        <EmojiPicker onSelect={(emoji) => editor.chain().focus().insertContent(emoji).run()} />
         <span className="rte-divider" />
         <ToolbarButton
           label="↺"

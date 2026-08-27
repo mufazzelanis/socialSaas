@@ -1201,4 +1201,30 @@
   .dt-picker-day--selected {
     @apply bg-primary text-white font-semibold;
   }
+
+  /* ---------------- Emoji picker (composer toolbar) ---------------- */
+  .emoji-picker-panel {
+    @apply sm:max-w-[22rem];
+  }
+  .emoji-picker-tabs {
+    @apply flex gap-1 mb-2 pb-2 border-b border-border overflow-x-auto;
+  }
+  .emoji-picker-tab {
+    @apply flex items-center justify-center w-9 h-9 shrink-0 rounded-lg border-none bg-transparent text-[1.1rem] cursor-pointer transition-colors;
+  }
+  .emoji-picker-tab:hover {
+    @apply bg-bg;
+  }
+  .emoji-picker-tab.active {
+    @apply bg-primary/10 ring-1 ring-primary/40;
+  }
+  .emoji-picker-grid {
+    @apply grid grid-cols-6 gap-1 max-h-64 overflow-y-auto;
+  }
+  .emoji-picker-item {
+    @apply flex items-center justify-center w-10 h-10 rounded-lg border-none bg-transparent text-[1.4rem] cursor-pointer transition-colors;
+  }
+  .emoji-picker-item:hover {
+    @apply bg-bg;
+  }
 }
