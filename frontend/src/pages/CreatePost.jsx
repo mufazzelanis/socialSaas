@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import AdSlot from '../components/AdSlot';
 import api from '../api/client';
 import RichTextEditor from '../components/RichTextEditor';
+import DateTimePicker from '../components/DateTimePicker';
 
 const PLATFORM_LABELS = {
   telegram: 'Telegram',
@@ -212,13 +213,9 @@ export default function CreatePost() {
             </div>
 
             {publishMode === 'schedule' && (
-              <input
-                type="datetime-local"
-                className="mt-2"
-                min={minScheduleValue()}
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
-              />
+              <div className="mt-2">
+                <DateTimePicker value={scheduledAt} onChange={setScheduledAt} min={minScheduleValue()} />
+              </div>
             )}
           </div>
 

@@ -42,6 +42,14 @@ const PATHS = {
     </>
   ),
   moon: <path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11Z" />,
+  calendar: (
+    <>
+      <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+      <path d="M8 2.5v4M16 2.5v4M3 9.5h18" />
+    </>
+  ),
+  'chevron-left': <path d="M15 5 8 12l7 7" />,
+  'chevron-right': <path d="M9 5l7 7-7 7" />,
 };
 
 export default function Icon({ name, size = 20, className = '', strokeWidth = 2 }) {

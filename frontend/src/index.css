@@ -1004,4 +1004,51 @@
   .modal-details {
     @apply whitespace-pre-wrap text-text-muted mb-4;
   }
+
+  /* ---------------- Date/time picker (post scheduling) ---------------- */
+  .dt-picker-trigger {
+    @apply flex items-center gap-2 w-full border border-border rounded-lg px-3 py-2.5 text-[0.9rem] text-text bg-surface cursor-pointer transition-colors;
+  }
+  .dt-picker-trigger:hover {
+    @apply border-primary/40;
+  }
+  .dt-picker-panel {
+    @apply sm:max-w-[22rem];
+  }
+  .dt-picker-title {
+    @apply text-center text-[1.05rem] font-semibold mb-3;
+  }
+  .dt-picker-nav {
+    @apply flex items-center justify-between mb-2;
+  }
+  .dt-picker-nav-btn {
+    @apply w-8 h-8 rounded-full flex items-center justify-center border-none bg-transparent text-text-muted cursor-pointer transition-colors hover:bg-bg hover:text-primary;
+  }
+  .dt-picker-month {
+    @apply font-semibold text-text;
+  }
+  .dt-picker-weekdays {
+    @apply grid grid-cols-7 text-center text-[0.75rem] text-text-muted mb-1;
+  }
+  .dt-picker-grid {
+    @apply grid grid-cols-7 gap-y-1 place-items-center;
+  }
+  .dt-picker-day {
+    @apply w-9 h-9 rounded-full bg-transparent text-[0.875rem] text-text cursor-pointer transition-colors flex items-center justify-center;
+  }
+  .dt-picker-day:hover:not(:disabled) {
+    @apply bg-primary/10;
+  }
+  .dt-picker-day:disabled {
+    @apply text-text-muted/40 cursor-not-allowed;
+  }
+  .dt-picker-day--muted {
+    @apply text-text-muted/50;
+  }
+  .dt-picker-day--today {
+    @apply border border-primary text-primary font-semibold;
+  }
+  .dt-picker-day--selected {
+    @apply bg-primary text-white font-semibold;
+  }
 }

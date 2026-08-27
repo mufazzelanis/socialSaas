@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import AdSlot from '../components/AdSlot';
+import DateTimePicker from '../components/DateTimePicker';
 import api from '../api/client';
 
 const PLATFORM_LABELS = {
@@ -245,11 +246,10 @@ export default function PostHistory() {
                   {scheduleError && <div className="alert alert-error">{scheduleError}</div>}
                   <label className="field">
                     <span>Publish at</span>
-                    <input
-                      type="datetime-local"
-                      min={toDatetimeLocalValue(new Date(Date.now() + 60 * 1000).toISOString())}
+                    <DateTimePicker
                       value={rescheduleValue}
-                      onChange={(e) => setRescheduleValue(e.target.value)}
+                      onChange={setRescheduleValue}
+                      min={toDatetimeLocalValue(new Date(Date.now() + 60 * 1000).toISOString())}
                     />
                   </label>
                   <div className="post-edit-actions">
