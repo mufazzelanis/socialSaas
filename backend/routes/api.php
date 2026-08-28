@@ -76,6 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/services', [ServiceController::class, 'index']);
 
     Route::post('/ai/generate', [AiController::class, 'generate']);
+    Route::post('/ai/generate-image', [AiController::class, 'generateImage']);
 
     Route::get('/conversations', [InboxController::class, 'index']);
     Route::get('/conversations/{conversation}', [InboxController::class, 'show']);

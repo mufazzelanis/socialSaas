@@ -11,6 +11,7 @@ class AiSetting extends Model
         'provider',
         'api_key',
         'model',
+        'image_model',
         'is_enabled',
         'updated_by',
     ];

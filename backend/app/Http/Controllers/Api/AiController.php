@@ -19,6 +19,16 @@ class AiController extends Controller
         'gemini' => 'gemini-3.6-flash',
     ];
 
+    // Image generation only for providers that actually support it —
+    // Claude has no image-generation capability at all. OpenAI's image
+    // models are a separate family from its chat models (gpt-5 can't draw),
+    // so this needs its own default; Gemini's flash models generate images
+    // natively from the same chat model, so there's no separate entry here
+    // — generateImage() falls back to DEFAULT_MODELS['gemini'] instead.
+    protected const DEFAULT_IMAGE_MODELS = [
+        'openai' => 'gpt-image-1',
+    ];
+
     protected const SYSTEM_PROMPT = <<<'PROMPT'
         You write social media post captions for a business owner. Given their
         request, write ONE ready-to-publish caption. Rules:
@@ -66,6 +76,57 @@ class AiController extends Controller
         }
 
         return response()->json(['content' => trim($text)]);
+    }
+
+    public function generateImage(Request $request)
+    {
+        $data = $request->validate([
+            'prompt' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $setting = AiSetting::current();
+        $apiKey = $setting->getDecryptedApiKey();
+
+        if (! $setting->is_enabled || ! $apiKey) {
+            return response()->json([
+                'message' => "AI writing isn't set up yet — ask your admin to add an API key in Platform Credentials.",
+            ], 422);
+        }
+
+        $provider = $setting->provider ?: 'claude';
+
+        if ($provider === 'claude') {
+            return response()->json([
+                'message' => "Claude can't generate images — switch the provider to Gemini or ChatGPT in Platform Credentials to use this.",
+            ], 422);
+        }
+
+        try {
+            $image = match ($provider) {
+                'openai' => $this->generateImageWithOpenAi(
+                    $apiKey,
+                    $setting->image_model ?: self::DEFAULT_IMAGE_MODELS['openai'],
+                    $data['prompt']
+                ),
+                'gemini' => $this->generateImageWithGemini(
+                    $apiKey,
+                    $setting->image_model ?: ($setting->model ?: self::DEFAULT_MODELS['gemini']),
+                    $data['prompt']
+                ),
+            };
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        if (! $image) {
+            return response()->json(['message' => 'AI did not return an image.'], 422);
+        }
+
+        // A data: URL — the frontend turns this straight into a File object
+        // and attaches it exactly like a manually-picked image, so nothing
+        // about the post-creation flow needs to know an image came from AI
+        // rather than the user's own device.
+        return response()->json(['image' => $image]);
     }
 
     protected function generateWithClaude(string $apiKey, string $model, string $prompt): ?string
@@ -125,5 +186,69 @@ class AiController extends Controller
         }
 
         return $response->json('candidates.0.content.parts.0.text');
+    }
+
+    protected function generateImageWithOpenAi(string $apiKey, string $model, string $prompt): ?string
+    {
+        $response = Http::timeout(60)
+            ->withToken($apiKey)
+            ->post('https://api.openai.com/v1/images/generations', [
+                'model' => $model,
+                'prompt' => $prompt,
+                'size' => '1024x1024',
+                'n' => 1,
+            ]);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($response->json('error.message') ?? 'ChatGPT image generation failed — try again.');
+        }
+
+        $item = $response->json('data.0') ?? [];
+
+        if (isset($item['b64_json'])) {
+            return 'data:image/png;base64,'.$item['b64_json'];
+        }
+
+        // Some models return a fetchable URL instead of inline data —
+        // fetch it ourselves so the frontend always gets one consistent
+        // data: URL shape regardless of which the provider chose.
+        if (isset($item['url'])) {
+            $imageResponse = Http::timeout(30)->get($item['url']);
+
+            if ($imageResponse->successful()) {
+                $mime = $imageResponse->header('Content-Type') ?: 'image/png';
+
+                return "data:{$mime};base64,".base64_encode($imageResponse->body());
+            }
+        }
+
+        return null;
+    }
+
+    protected function generateImageWithGemini(string $apiKey, string $model, string $prompt): ?string
+    {
+        $response = Http::timeout(60)
+            ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
+                'contents' => [
+                    ['role' => 'user', 'parts' => [['text' => $prompt]]],
+                ],
+                'generationConfig' => [
+                    'responseModalities' => ['IMAGE'],
+                ],
+            ]);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($response->json('error.message') ?? 'Gemini image generation failed — try again.');
+        }
+
+        foreach ($response->json('candidates.0.content.parts') ?? [] as $part) {
+            if (isset($part['inlineData']['data'])) {
+                $mime = $part['inlineData']['mimeType'] ?? 'image/png';
+
+                return "data:{$mime};base64,".$part['inlineData']['data'];
+            }
+        }
+
+        return null;
     }
 }

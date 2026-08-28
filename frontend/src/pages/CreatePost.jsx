@@ -78,6 +78,20 @@ function isTextEmpty(html) {
   return html.replace(/<[^>]*>/g, '').trim() === '';
 }
 
+// Turns the data: URL the backend returns for an AI-generated image into a
+// real File object — the same shape a manually-picked <input type="file">
+// or a pasted image already produces — so it can go through addMediaFiles()
+// unchanged instead of the rest of the composer needing to know an image
+// came from AI rather than the user's own device.
+function dataUrlToFile(dataUrl, filename) {
+  const [header, base64] = dataUrl.split(',');
+  const mime = header.match(/data:(.*?);base64/)?.[1] || 'image/png';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], filename, { type: mime });
+}
+
 // Minimum lead time before a schedule is accepted — matches the backend's
 // `after:now` rule closely enough in spirit; a couple of minutes of slack
 // avoids a round-trip failing just because a second ticked over in transit.
@@ -94,7 +108,7 @@ export default function CreatePost() {
   const [accounts, setAccounts] = useState([]);
   const [selected, setSelected] = useState([]);
   const [contentHtml, setContentHtml] = useState('');
-  const [aiOpen, setAiOpen] = useState(false);
+  const [aiMode, setAiMode] = useState(null); // null | 'text' | 'image'
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState('');
@@ -279,10 +293,28 @@ export default function CreatePost() {
         .map((para) => `<p>${para.replace(/\n/g, '<br>')}</p>`)
         .join('');
       setContentHtml(html);
-      setAiOpen(false);
+      setAiMode(null);
       setAiPrompt('');
     } catch (err) {
       setAiError(err.response?.data?.message || 'Could not generate a post right now.');
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const handleAiImageGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+
+    setAiBusy(true);
+    setAiError('');
+    try {
+      const res = await api.post('/ai/generate-image', { prompt: aiPrompt.trim() });
+      const file = dataUrlToFile(res.data.image, `ai-image-${Date.now()}.png`);
+      addMediaFiles([file]);
+      setAiMode(null);
+      setAiPrompt('');
+    } catch (err) {
+      setAiError(err.response?.data?.message || 'Could not generate an image right now.');
     } finally {
       setAiBusy(false);
     }
@@ -357,16 +389,25 @@ export default function CreatePost() {
           {error && <div className="alert alert-error">{error}</div>}
 
           <div className="ai-generate">
-            {!aiOpen ? (
-              <button type="button" className="btn btn-ghost btn-small" onClick={() => setAiOpen(true)}>
-                ✨ Generate with AI
-              </button>
+            {!aiMode ? (
+              <div className="ai-generate-toggles">
+                <button type="button" className="btn btn-ghost btn-small" onClick={() => setAiMode('text')}>
+                  ✨ Generate with AI
+                </button>
+                <button type="button" className="btn btn-ghost btn-small" onClick={() => setAiMode('image')}>
+                  🖼️ Generate Image with AI
+                </button>
+              </div>
             ) : (
               <div className="ai-generate-panel">
                 {aiError && <div className="alert alert-error">{aiError}</div>}
                 <textarea
                   className="ai-generate-input"
-                  placeholder="Describe the post you want, e.g. &quot;Eid offer post, 30% off, cheerful tone&quot;"
+                  placeholder={
+                    aiMode === 'image'
+                      ? 'Describe the image you want, e.g. "a bright festive sale banner with balloons"'
+                      : 'Describe the post you want, e.g. "Eid offer post, 30% off, cheerful tone"'
+                  }
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                   rows={2}
@@ -377,7 +418,7 @@ export default function CreatePost() {
                     type="button"
                     className="btn btn-primary btn-small"
                     disabled={aiBusy || !aiPrompt.trim()}
-                    onClick={handleAiGenerate}
+                    onClick={aiMode === 'image' ? handleAiImageGenerate : handleAiGenerate}
                   >
                     {aiBusy ? 'Generating...' : 'Generate'}
                   </button>
@@ -385,7 +426,7 @@ export default function CreatePost() {
                     type="button"
                     className="btn btn-ghost btn-small"
                     onClick={() => {
-                      setAiOpen(false);
+                      setAiMode(null);
                       setAiError('');
                     }}
                   >

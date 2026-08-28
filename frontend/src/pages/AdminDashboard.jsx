@@ -908,6 +908,7 @@ const AI_PROVIDERS = {
     defaultModel: 'claude-sonnet-5',
     keysUrl: 'https://console.anthropic.com/settings/keys',
     keysHost: 'console.anthropic.com',
+    imageSupported: false,
   },
   openai: {
     label: 'ChatGPT (OpenAI)',
@@ -915,6 +916,8 @@ const AI_PROVIDERS = {
     defaultModel: 'gpt-5',
     keysUrl: 'https://platform.openai.com/api-keys',
     keysHost: 'platform.openai.com',
+    imageSupported: true,
+    defaultImageModel: 'gpt-image-1',
   },
   gemini: {
     label: 'Gemini (Google)',
@@ -922,6 +925,11 @@ const AI_PROVIDERS = {
     defaultModel: 'gemini-3.6-flash',
     keysUrl: 'https://aistudio.google.com/apikey',
     keysHost: 'aistudio.google.com',
+    imageSupported: true,
+    // No separate default — Gemini's flash models generate images
+    // natively from the same chat model, so this just falls back to
+    // whatever Model (or the default above) is already set.
+    defaultImageModel: null,
   },
 };
 
@@ -930,6 +938,7 @@ function AiSettingsPanel() {
   const [provider, setProvider] = useState('claude');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
+  const [imageModel, setImageModel] = useState('');
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -940,6 +949,7 @@ function AiSettingsPanel() {
       setSettings(res.data);
       setProvider(res.data.provider || 'claude');
       setModel(res.data.model || '');
+      setImageModel(res.data.image_model || '');
       setEnabled(!!res.data.is_enabled);
     });
   };
@@ -955,6 +965,7 @@ function AiSettingsPanel() {
     setProvider(next);
     setApiKey('');
     setModel('');
+    setImageModel('');
   };
 
   const save = async () => {
@@ -966,6 +977,7 @@ function AiSettingsPanel() {
         provider,
         api_key: apiKey || undefined,
         model: model || null,
+        image_model: imageModel || null,
         is_enabled: enabled,
       });
       setMessage('AI settings saved.');
@@ -1032,6 +1044,28 @@ function AiSettingsPanel() {
         <input value={model} onChange={(e) => setModel(e.target.value)} placeholder={info.defaultModel} />
         <span className="muted small">Leave blank to use {info.defaultModel}.</span>
       </label>
+
+      {info.imageSupported ? (
+        <label className="field">
+          <span>Image Model (optional)</span>
+          <input
+            value={imageModel}
+            onChange={(e) => setImageModel(e.target.value)}
+            placeholder={info.defaultImageModel || `same as Model above (${model || info.defaultModel})`}
+          />
+          <span className="muted small">
+            Powers "🖼️ Generate Image with AI" in Create Post.{' '}
+            {info.defaultImageModel
+              ? `Leave blank to use ${info.defaultImageModel}.`
+              : "Leave blank to reuse the Model above — Gemini's flash models generate images natively."}
+          </span>
+        </label>
+      ) : (
+        <p className="muted small">
+          Claude can't generate images — "🖼️ Generate Image with AI" in Create Post needs
+          ChatGPT or Gemini selected above.
+        </p>
+      )}
 
       <label className="toggle mb-3.5">
         <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />

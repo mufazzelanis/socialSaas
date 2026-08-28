@@ -22,6 +22,7 @@ class AiSettingController extends Controller
             'provider' => ['sometimes', Rule::in(['claude', 'openai', 'gemini'])],
             'api_key' => ['nullable', 'string', 'max:500'],
             'model' => ['nullable', 'string', 'max:100'],
+            'image_model' => ['nullable', 'string', 'max:100'],
             'is_enabled' => ['sometimes', 'boolean'],
         ]);
 
@@ -46,6 +47,7 @@ class AiSettingController extends Controller
         if (array_key_exists('provider', $data) && $data['provider'] !== $setting->provider) {
             $setting->api_key = null;
             $setting->model = null;
+            $setting->image_model = null;
         }
 
         $setting->provider = $data['provider'] ?? $setting->provider;
@@ -58,6 +60,10 @@ class AiSettingController extends Controller
 
         if (array_key_exists('model', $data)) {
             $setting->model = $data['model'];
+        }
+
+        if (array_key_exists('image_model', $data)) {
+            $setting->image_model = $data['image_model'];
         }
 
         if (array_key_exists('is_enabled', $data)) {

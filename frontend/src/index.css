@@ -1406,6 +1406,9 @@
   .ai-generate {
     @apply mb-3;
   }
+  .ai-generate-toggles {
+    @apply flex flex-wrap gap-2;
+  }
   .ai-generate-panel {
     @apply border border-border rounded-xl p-3 bg-bg flex flex-col gap-2;
   }
