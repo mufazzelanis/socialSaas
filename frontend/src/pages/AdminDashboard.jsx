@@ -676,7 +676,9 @@ function CredentialsPanel() {
                   <a href="https://t.me/BotFather" target="_blank" rel="noreferrer">
                     @BotFather
                   </a>{' '}
-                  — every user will add it as admin to their own channel/group.
+                  — every user will add it as admin to their own channel/group. Saving here also
+                  registers this bot's webhook automatically (for the Inbox feature) — no extra
+                  setup needed.
                 </p>
               )}
 
@@ -696,6 +698,15 @@ function CredentialsPanel() {
                     under <strong>Facebook Login for Business → Configurations</strong> in the
                     Meta Developer Console, then paste the Configuration ID here.
                   </p>
+                  {cred.webhook_secret && (
+                    <p className="muted small">
+                      For the Inbox feature (Messenger + Instagram DMs): in Meta Developer
+                      Console → your app → <strong>Webhooks</strong>, add Callback URL{' '}
+                      <code>https://api.socialsaas.a-haque.com/api/webhooks/meta</code> and
+                      Verify Token <code>{cred.webhook_secret}</code>, then subscribe to the{' '}
+                      <code>messages</code> field for both the Page and Instagram objects.
+                    </p>
+                  )}
                 </>
               )}
 

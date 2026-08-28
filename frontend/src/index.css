@@ -1325,4 +1325,77 @@
   .emoji-picker-item:hover {
     @apply bg-bg;
   }
+
+  /* ---------------- Inbox ---------------- */
+  .inbox-layout {
+    @apply flex gap-4 border border-border rounded-2xl bg-surface overflow-hidden;
+    height: calc(100vh - 220px);
+    min-height: 420px;
+  }
+  .inbox-list {
+    @apply w-full sm:w-[320px] shrink-0 border-r border-border overflow-y-auto flex flex-col;
+  }
+  .inbox-list-item {
+    @apply flex items-start gap-2.5 w-full text-left p-3 border-b border-border bg-transparent border-x-0 border-t-0 cursor-pointer transition-colors;
+  }
+  .inbox-list-item:hover {
+    @apply bg-bg;
+  }
+  .inbox-list-item.active {
+    @apply bg-primary/10;
+  }
+  .inbox-avatar {
+    @apply w-9 h-9 rounded-full flex items-center justify-center text-white text-[0.75rem] font-bold shrink-0;
+  }
+  .inbox-list-item-body {
+    @apply flex-1 min-w-0 flex flex-col gap-0.5;
+  }
+  .inbox-list-item-top {
+    @apply flex items-center justify-between gap-2;
+  }
+  .inbox-list-item-time {
+    @apply text-[0.72rem] text-text-muted shrink-0;
+  }
+  .inbox-list-item-preview {
+    @apply text-[0.82rem] text-text-muted truncate;
+  }
+  .inbox-platform-tag {
+    @apply text-[0.65rem] mr-0 mt-0.5 self-start;
+  }
+  .inbox-unread-dot {
+    @apply shrink-0 min-w-[1.25rem] h-5 flex items-center justify-center bg-primary text-white text-[0.7rem] font-bold rounded-full px-1;
+  }
+  .inbox-thread {
+    @apply flex-1 min-w-0 flex flex-col;
+  }
+  .inbox-thread-empty {
+    @apply flex-1 flex flex-col items-center justify-center gap-2 text-text-muted;
+  }
+  .inbox-thread-header {
+    @apply flex items-center gap-2 p-3.5 border-b border-border;
+  }
+  .inbox-thread-messages {
+    @apply flex-1 overflow-y-auto p-4 flex flex-col gap-2;
+  }
+  .inbox-bubble-row {
+    @apply flex;
+  }
+  .inbox-bubble-row.outbound {
+    @apply justify-end;
+  }
+  .inbox-bubble {
+    @apply max-w-[75%] rounded-2xl px-3.5 py-2 text-[0.88rem] whitespace-pre-wrap bg-bg;
+  }
+  .inbox-bubble.outbound {
+    @apply bg-primary text-white;
+  }
+  .inbox-bubble-error {
+    @apply flex items-center gap-1 text-[0.72rem] text-danger mt-1;
+  }
+  .inbox-reply-box {
+    @apply flex items-center gap-2 p-3 border-t border-border;
+  }
+  .inbox-reply-box input {
+    @apply flex-1 border border-border rounded-full px-4 py-2 bg-bg text-text text-[0.9rem] outline-none;
+  }
 }

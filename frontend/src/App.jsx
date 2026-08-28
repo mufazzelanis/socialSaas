@@ -20,6 +20,7 @@ const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ConnectAccounts = lazy(() => import('./pages/ConnectAccounts'));
+const Inbox = lazy(() => import('./pages/Inbox'));
 const CreatePost = lazy(() => import('./pages/CreatePost'));
 const PostHistory = lazy(() => import('./pages/PostHistory'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -81,6 +82,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <ConnectAccounts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/inbox"
+                  element={
+                    <ProtectedRoute>
+                      <Inbox />
                     </ProtectedRoute>
                   }
                 />

@@ -12,6 +12,7 @@ class PlatformCredential extends Model
         'client_id',
         'client_secret',
         'config_id',
+        'webhook_secret',
         'is_enabled',
         'updated_by',
     ];

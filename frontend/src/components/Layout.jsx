@@ -15,6 +15,7 @@ const navItems = [
   { to: '/create', label: 'Create Post', short: 'Create', icon: 'plus' },
   { to: '/posts', label: 'Post History', short: 'History', icon: 'clock' },
   { to: '/accounts', label: 'Social Accounts', short: 'Accounts', icon: 'link' },
+  { to: '/inbox', label: 'Inbox', short: 'Inbox', icon: 'inbox' },
   { to: '/profile', label: 'Profile', short: 'Profile', icon: 'user' },
 ];
 

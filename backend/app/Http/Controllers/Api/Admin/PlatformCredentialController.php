@@ -7,6 +7,8 @@ use App\Models\PlatformCredential;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class PlatformCredentialController extends Controller
@@ -76,9 +78,36 @@ class PlatformCredentialController extends Controller
             $credential->is_enabled = $data['is_enabled'];
         }
 
+        // Both messaging webhook flows (Telegram's URL secret, Meta's
+        // verify token) need one of these — generated once, the first time
+        // a platform that uses it gets saved, rather than asking the admin
+        // to invent and paste a random string themselves.
+        if (in_array($platform, ['telegram', 'facebook'], true) && ! $credential->webhook_secret) {
+            $credential->webhook_secret = Str::random(40);
+        }
+
         $credential->updated_by = $request->user()->id;
         $credential->save();
 
+        if ($platform === 'telegram' && $credential->is_enabled && $credential->has_secret) {
+            $this->registerTelegramWebhook($credential);
+        }
+
         return response()->json($credential);
+    }
+
+    /**
+     * Telegram is the one platform here that needs no manual setup in an
+     * external developer portal — this app already has the bot token, so
+     * it can just tell Telegram where to deliver updates itself, every
+     * time the bot credentials are (re)saved.
+     */
+    protected function registerTelegramWebhook(PlatformCredential $credential): void
+    {
+        $url = url("/api/webhooks/telegram/{$credential->webhook_secret}");
+
+        Http::timeout(15)->post("https://api.telegram.org/bot{$credential->client_secret}/setWebhook", [
+            'url' => $url,
+        ]);
     }
 }

@@ -94,6 +94,12 @@ const PATHS = {
       <circle cx="16" cy="16" r="3" />
     </>
   ),
+  inbox: (
+    <>
+      <path d="M3 12h4.5l1.5 3h6l1.5-3H21" />
+      <path d="M6 5h12l3 7v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-7l3-7Z" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 20, className = '', strokeWidth = 2 }) {

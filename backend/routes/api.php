@@ -9,12 +9,15 @@ use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AdSlotController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandSettingController;
+use App\Http\Controllers\Api\InboxController;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SiteSettingController;
 use App\Http\Controllers\Api\SocialAccountController;
 use App\Http\Controllers\Api\SocialOAuthController;
+use App\Http\Controllers\Api\Webhooks\MetaWebhookController;
+use App\Http\Controllers\Api\Webhooks\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('throttle:auth')->group(function () {
@@ -40,6 +43,14 @@ Route::get('/site-settings', [SiteSettingController::class, 'show']);
 // own branding before there's a session to authenticate with.
 Route::get('/brand-settings', [BrandSettingController::class, 'show']);
 
+// Public: called directly by each platform, not by our own frontend — each
+// verifies the caller itself (a URL secret for Telegram, a signed payload
+// for Meta) rather than relying on Sanctum, since the platforms don't have
+// one of our tokens.
+Route::post('/webhooks/telegram/{secret}', [TelegramWebhookController::class, 'handle']);
+Route::get('/webhooks/meta', [MetaWebhookController::class, 'verify']);
+Route::post('/webhooks/meta', [MetaWebhookController::class, 'handle']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -61,6 +72,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/ad-slots', [AdSlotController::class, 'index']);
     Route::get('/services', [ServiceController::class, 'index']);
+
+    Route::get('/conversations', [InboxController::class, 'index']);
+    Route::get('/conversations/{conversation}', [InboxController::class, 'show']);
+    Route::post('/conversations/{conversation}/reply', [InboxController::class, 'reply']);
 
     Route::middleware('super_admin')->prefix('admin')->group(function () {
         Route::get('/users', [AdminUserController::class, 'index']);
