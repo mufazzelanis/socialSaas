@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
+import AuthBrandHeader from '../components/AuthBrandHeader';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -26,6 +27,7 @@ export default function ForgotPassword() {
 
   return (
     <div className="auth-page">
+      <AuthBrandHeader />
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Forgot your password?</h1>
         <p className="auth-subtitle">

@@ -35,6 +35,11 @@ Route::get('/social-accounts/oauth/{platform}/callback', [SocialOAuthController:
 // already signed in.
 Route::get('/site-settings', [SiteSettingController::class, 'show']);
 
+// Public for the same reason — nothing sensitive (name/logo/favicon/color),
+// and the login/register/forgot/reset pages need it to show the tenant's
+// own branding before there's a session to authenticate with.
+Route::get('/brand-settings', [BrandSettingController::class, 'show']);
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -54,7 +59,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/posts/{post}/platforms/{postPlatform}/retry', [PostController::class, 'retryPlatform']);
     Route::delete('/posts/{post}', [PostController::class, 'destroy']);
 
-    Route::get('/brand-settings', [BrandSettingController::class, 'show']);
     Route::get('/ad-slots', [AdSlotController::class, 'index']);
     Route::get('/services', [ServiceController::class, 'index']);
 

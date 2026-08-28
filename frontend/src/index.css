@@ -462,7 +462,7 @@
 
   /* ---------------- Auth pages ---------------- */
   .auth-page {
-    @apply min-h-screen flex items-center justify-center p-4 relative overflow-hidden;
+    @apply min-h-screen flex flex-col items-center justify-center gap-5 p-4 relative overflow-hidden;
     background: linear-gradient(-45deg, var(--primary), #14151a, #4f1d9e, var(--primary));
     background-size: 400% 400%;
     animation: gradient-shift 12s ease infinite;
@@ -493,6 +493,19 @@
     right: -8rem;
     background: rgb(79 70 229 / 0.25);
     animation: float-blob 18s ease-in-out infinite reverse;
+  }
+  .auth-brand {
+    @apply relative z-10 flex items-center justify-center animate-in;
+  }
+  .auth-brand-logo-chip {
+    @apply inline-flex bg-white/95 rounded-2xl px-5 py-3 shadow-xl;
+  }
+  .auth-brand-logo {
+    @apply max-h-14 w-auto max-w-[220px] object-contain;
+  }
+  .auth-brand-name {
+    @apply text-white text-2xl font-bold tracking-tight;
+    text-shadow: 0 2px 12px rgb(0 0 0 / 0.25);
   }
   .auth-card {
     @apply bg-surface rounded-2xl p-7 sm:p-9 w-full max-w-[380px] shadow-2xl animate-in relative z-10;

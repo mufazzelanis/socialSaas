@@ -25,10 +25,19 @@ class BrandSetting extends Model
     /**
      * There's always exactly one settings row — branding is site-wide (every
      * user's dashboard shows the same logo/favicon/color), not per-user.
+     *
+     * Deliberately not firstOrCreate(['id' => 1]) — relying on id=1
+     * specifically breaks permanently the moment that exact row is ever
+     * gone (this actually happened: a cascade delete from the old user_id
+     * foreign key, before it was migrated to a nullable updated_by).
+     * Nothing would ever match id=1 again, silently creating a fresh, empty
+     * row on every single call forever after — the saved logo/favicon look
+     * like they vanished, when they're really just orphaned in an
+     * unreachable row. Just take whichever row actually exists instead.
      */
     public static function current(): self
     {
-        return static::firstOrCreate(['id' => 1]);
+        return static::query()->first() ?? static::create([]);
     }
 
     public function updatedBy()

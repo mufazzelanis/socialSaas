@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import api from '../api/client';
-import { useAuth } from './AuthContext';
 
 const DEFAULTS = {
   brand_name: 'Social SaaS',
@@ -47,17 +46,13 @@ function applyToDocument(brand) {
 }
 
 export function BrandProvider({ children }) {
-  const { user } = useAuth();
+  // /brand-settings is a public endpoint (nothing sensitive in it) — fetched
+  // regardless of auth state so the login/register/forgot/reset pages show
+  // the tenant's own branding too, not just the dashboard behind a session.
   const [brand, setBrand] = useState(DEFAULTS);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(() => {
-    if (!user) {
-      setBrand(DEFAULTS);
-      applyToDocument(DEFAULTS);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     api
       .get('/brand-settings')
@@ -71,7 +66,7 @@ export function BrandProvider({ children }) {
         applyToDocument(DEFAULTS);
       })
       .finally(() => setLoading(false));
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     reload();

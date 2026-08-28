@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { trackPixelEvent } from '../lib/pixel';
+import AuthBrandHeader from '../components/AuthBrandHeader';
 
 export default function Register() {
   const { register } = useAuth();
@@ -33,6 +34,7 @@ export default function Register() {
 
   return (
     <div className="auth-page">
+      <AuthBrandHeader />
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Create your account</h1>
         <p className="auth-subtitle">

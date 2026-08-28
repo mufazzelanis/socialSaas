@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import AuthBrandHeader from '../components/AuthBrandHeader';
 
 export default function Login() {
   const { login } = useAuth();
@@ -30,6 +31,7 @@ export default function Login() {
 
   return (
     <div className="auth-page">
+      <AuthBrandHeader />
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Welcome back</h1>
         <p className="auth-subtitle">Log in to manage your social posts.</p>

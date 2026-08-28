@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import AuthBrandHeader from '../components/AuthBrandHeader';
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ export default function ResetPassword() {
 
   return (
     <div className="auth-page">
+      <AuthBrandHeader />
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Set a new password</h1>
         <p className="auth-subtitle">for {email || 'your account'}</p>
