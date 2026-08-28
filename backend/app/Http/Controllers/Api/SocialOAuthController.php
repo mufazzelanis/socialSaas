@@ -17,6 +17,7 @@ class SocialOAuthController extends Controller
     protected const PLATFORM_LABELS = [
         'facebook' => 'Facebook',
         'linkedin' => 'LinkedIn',
+        'tiktok' => 'TikTok',
     ];
 
     /**
@@ -91,7 +92,7 @@ class SocialOAuthController extends Controller
 
         try {
             $connector = ConnectorFactory::make($platform);
-            $accounts = $connector->handleCallback($credential, $code, $this->redirectUri($platform));
+            $accounts = $connector->handleCallback($credential, $code, $this->redirectUri($platform), $state);
         } catch (\Throwable $e) {
             Log::error("OAuth callback failed for {$platform}", ['error' => $e->getMessage()]);
 

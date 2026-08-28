@@ -26,7 +26,7 @@ class LinkedInConnector implements SocialConnectorInterface
         return 'https://www.linkedin.com/oauth/v2/authorization?'.http_build_query($params);
     }
 
-    public function handleCallback(PlatformCredential $credential, string $code, string $redirectUri): array
+    public function handleCallback(PlatformCredential $credential, string $code, string $redirectUri, string $state): array
     {
         $tokenResponse = Http::asForm()->post('https://www.linkedin.com/oauth/v2/accessToken', [
             'grant_type' => 'authorization_code',

@@ -25,13 +25,14 @@ const AD_NETWORK_LABELS = {
   custom: 'Custom / other',
 };
 
-const ALL_PLATFORMS = ['telegram', 'facebook', 'instagram', 'linkedin'];
+const ALL_PLATFORMS = ['telegram', 'facebook', 'instagram', 'linkedin', 'tiktok'];
 
 const PLATFORM_LABELS = {
   telegram: 'Telegram',
   facebook: 'Facebook',
   instagram: 'Instagram',
   linkedin: 'LinkedIn',
+  tiktok: 'TikTok',
 };
 
 const EVENT_LABELS = {
@@ -640,7 +641,13 @@ function CredentialsPanel() {
               </div>
 
               <label className="field">
-                <span>{cred.platform === 'telegram' ? 'Bot Username' : 'Client ID / App ID'}</span>
+                <span>
+                  {cred.platform === 'telegram'
+                    ? 'Bot Username'
+                    : cred.platform === 'tiktok'
+                      ? 'Client Key'
+                      : 'Client ID / App ID'}
+                </span>
                 <input
                   value={draft.client_id ?? cred.client_id ?? ''}
                   onChange={(e) => setDraft(cred.platform, 'client_id', e.target.value)}
@@ -690,6 +697,17 @@ function CredentialsPanel() {
                     Meta Developer Console, then paste the Configuration ID here.
                   </p>
                 </>
+              )}
+
+              {cred.platform === 'tiktok' && (
+                <p className="muted small">
+                  From TikTok Developer Portal → your app → <strong>Login Kit</strong> Redirect
+                  URI, add the exact URL{' '}
+                  <code>https://api.socialsaas.a-haque.com/api/social-accounts/oauth/tiktok/callback</code>{' '}
+                  (must match exactly, including the trailing path). While the app is a
+                  Sandbox/unaudited app, only TikTok accounts added there as "Target users" can
+                  actually connect and post.
+                </p>
               )}
 
               <button

@@ -87,6 +87,13 @@ const PATHS = {
       <path d="M12 9v4M12 17h.01" />
     </>
   ),
+  'music-note': (
+    <>
+      <path d="M9 18V5l10-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="16" cy="16" r="3" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 20, className = '', strokeWidth = 2 }) {

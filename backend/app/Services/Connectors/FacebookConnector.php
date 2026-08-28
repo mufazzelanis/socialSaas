@@ -54,7 +54,7 @@ class FacebookConnector implements SocialConnectorInterface
         return "https://www.facebook.com/{$this->version()}/dialog/oauth?".http_build_query($params);
     }
 
-    public function handleCallback(PlatformCredential $credential, string $code, string $redirectUri): array
+    public function handleCallback(PlatformCredential $credential, string $code, string $redirectUri, string $state): array
     {
         // 1. Exchange the code for a short-lived user access token.
         $tokenResponse = Http::get($this->graphUrl('oauth/access_token'), [

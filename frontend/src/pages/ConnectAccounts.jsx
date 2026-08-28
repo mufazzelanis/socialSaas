@@ -9,9 +9,10 @@ const PLATFORM_LABELS = {
   facebook: 'Facebook',
   instagram: 'Instagram',
   linkedin: 'LinkedIn',
+  tiktok: 'TikTok',
 };
 
-const ALL_PLATFORMS = ['telegram', 'facebook', 'instagram', 'linkedin'];
+const ALL_PLATFORMS = ['telegram', 'facebook', 'instagram', 'linkedin', 'tiktok'];
 
 function OAuthResultBanner() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -222,6 +223,29 @@ export default function ConnectAccounts() {
             onClick={() => handleConnectOAuth('linkedin')}
           >
             {oauthBusy === 'linkedin' ? 'Opening LinkedIn...' : '💼 Log in with LinkedIn'}
+          </button>
+        )}
+      </div>
+
+      <div className="card">
+        <h2>TikTok</h2>
+        <p className="muted">
+          Just log in with TikTok below — no technical setup needed. Posts through this app are
+          video-only, and (until this app passes TikTok's review) publish privately to your own
+          account rather than publicly.
+        </p>
+
+        {!allowed.includes('tiktok') ? (
+          <div className="alert alert-info">
+            🔒 Not available for your account yet. Ask your admin to turn it on for you.
+          </div>
+        ) : (
+          <button
+            className="btn btn-primary"
+            disabled={oauthBusy === 'tiktok'}
+            onClick={() => handleConnectOAuth('tiktok')}
+          >
+            {oauthBusy === 'tiktok' ? 'Opening TikTok...' : '🎵 Log in with TikTok'}
           </button>
         )}
       </div>

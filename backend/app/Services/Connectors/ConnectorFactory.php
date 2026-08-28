@@ -18,6 +18,7 @@ class ConnectorFactory
     protected static array $map = [
         'facebook' => FacebookConnector::class,
         'linkedin' => LinkedInConnector::class,
+        'tiktok' => TikTokConnector::class,
     ];
 
     public static function make(string $platform): SocialConnectorInterface

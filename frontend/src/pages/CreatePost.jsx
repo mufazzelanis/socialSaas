@@ -13,16 +13,18 @@ const PLATFORM_LABELS = {
   facebook: 'Facebook',
   instagram: 'Instagram',
   linkedin: 'LinkedIn',
+  tiktok: 'TikTok',
 };
 
 // Order the preview tabs read in, independent of PLATFORM_LABELS' own order.
-const PLATFORM_PREVIEW_ORDER = ['facebook', 'telegram', 'instagram', 'linkedin'];
+const PLATFORM_PREVIEW_ORDER = ['facebook', 'telegram', 'instagram', 'linkedin', 'tiktok'];
 
 const PREVIEW_NAME_FALLBACK = {
   facebook: 'Your Facebook Page',
   telegram: 'Your Telegram Channel',
   instagram: 'your_instagram',
   linkedin: 'Your LinkedIn Profile',
+  tiktok: 'your_tiktok',
 };
 
 // Each platform's own real posting rules — not cosmetic differences, these
@@ -49,6 +51,11 @@ const PLATFORM_RULES = {
     limit: 3000,
     mediaRequired: false,
     note: "LinkedIn also truncates to a couple of lines before \"...see more\" — keep the opener tight.",
+  },
+  tiktok: {
+    limit: 2200,
+    mediaRequired: true,
+    note: 'TikTok posts through this app need a video attached — image-only or text-only posts aren’t supported yet.',
   },
 };
 

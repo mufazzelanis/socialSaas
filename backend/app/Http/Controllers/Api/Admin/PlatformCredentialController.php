@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 
 class PlatformCredentialController extends Controller
 {
-    protected array $platforms = ['telegram', 'facebook', 'instagram', 'linkedin'];
+    protected array $platforms = ['telegram', 'facebook', 'instagram', 'linkedin', 'tiktok'];
 
     public function index(Request $request)
     {

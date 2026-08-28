@@ -10,6 +10,7 @@ const PLATFORM_LABELS = {
   facebook: 'Facebook',
   instagram: 'Instagram',
   linkedin: 'LinkedIn',
+  tiktok: 'TikTok',
 };
 
 const STATUS_LABELS = {

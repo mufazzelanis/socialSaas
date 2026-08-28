@@ -5,7 +5,7 @@ return [
     // permission checks, the admin platform-credentials screen, etc.
     // Not every platform here necessarily has a working publisher yet —
     // see App\Services\Publishers\PublisherFactory for what's actually wired up.
-    'platforms' => ['telegram', 'facebook', 'instagram', 'linkedin'],
+    'platforms' => ['telegram', 'facebook', 'instagram', 'linkedin', 'tiktok'],
 
     // Whether a user who self-registers via the public /register form
     // automatically gets every platform permission, or starts locked out

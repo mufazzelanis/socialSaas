@@ -9,12 +9,13 @@ function initials(name) {
 // Shared media block — one item renders full-size; 2+ shows the first item
 // with a "1/N" badge, since none of these mockups need to be a working
 // carousel, just make clear more than one item is attached.
-function PreviewMedia({ media, square }) {
+function PreviewMedia({ media, square, tall }) {
   if (!media || media.length === 0) return null;
   const first = media[0];
+  const variant = square ? ' pv-media--square' : tall ? ' pv-media--tall' : '';
 
   return (
-    <div className={'pv-media' + (square ? ' pv-media--square' : '')}>
+    <div className={'pv-media' + variant}>
       {first.kind === 'video' ? (
         <video src={first.preview} className="pv-media-el" muted />
       ) : (
@@ -131,6 +132,51 @@ function LinkedInMock({ name, content, media }) {
   );
 }
 
+// TikTok gets a full-height "phone stage" treatment instead of the generic
+// feed-post card — a vertical video with the caption and action icons
+// overlaid on top, since that's what actually distinguishes it (and
+// reflects that TikTok posts through this app are video-only).
+function TikTokMock({ name, content, media }) {
+  const hasVideo = media.length > 0;
+
+  return (
+    <div className="pv-card pv-tt-wrap">
+      <div className="pv-tt-stage">
+        {hasVideo ? (
+          <PreviewMedia media={media} tall />
+        ) : (
+          <div className="pv-tt-placeholder">
+            <Icon name="music-note" size={26} />
+            <span>Add a video to preview</span>
+          </div>
+        )}
+        <div className="pv-tt-side">
+          <span className="pv-avatar pv-avatar--tt">{initials(name)}</span>
+          <span className="pv-tt-action">
+            <Icon name="heart" size={22} />
+            128
+          </span>
+          <span className="pv-tt-action">
+            <Icon name="comment" size={22} />
+            24
+          </span>
+          <span className="pv-tt-action">
+            <Icon name="share" size={22} />
+            Share
+          </span>
+        </div>
+        <div className="pv-tt-caption">
+          <strong className="pv-tt-name">@{name}</strong>
+          {content && <p className="pv-tt-text">{content}</p>}
+          <div className="pv-tt-sound">
+            <Icon name="music-note" size={12} /> original sound
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Renders a mockup of how a post will actually look on the given platform —
  * not pixel-perfect, but close enough in layout/color that a user gets a
@@ -148,6 +194,8 @@ export default function PlatformPreview({ platform, name, content, mediaFiles })
       return <TelegramMock name={name} content={content} media={media} />;
     case 'linkedin':
       return <LinkedInMock name={name} content={content} media={media} />;
+    case 'tiktok':
+      return <TikTokMock name={name} content={content} media={media} />;
     default:
       return null;
   }

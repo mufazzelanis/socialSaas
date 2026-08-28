@@ -580,6 +580,9 @@
   .platform-linkedin {
     background: #0a66c2;
   }
+  .platform-tiktok {
+    background: #000000;
+  }
 
   .status-dot {
     @apply inline-block w-2 h-2 rounded-full ml-2;
@@ -804,6 +807,9 @@
   .pv-media--square .pv-media-el {
     @apply aspect-square max-h-none;
   }
+  .pv-media--tall .pv-media-el {
+    @apply aspect-[9/16] max-h-none;
+  }
   .pv-media-badge {
     @apply absolute top-2 right-2 bg-black/60 text-white text-[0.7rem] font-semibold px-1.5 py-0.5 rounded-full;
   }
@@ -840,6 +846,48 @@
   }
   .mock-post-carousel-item {
     @apply w-28 h-28 shrink-0 rounded-lg object-cover;
+  }
+
+  /* TikTok's "phone stage" — a vertical video with the caption + action
+     icons overlaid on top, instead of the generic feed-post card layout
+     every other platform's mock uses. */
+  .pv-tt-wrap {
+    @apply bg-black p-0 overflow-hidden;
+  }
+  .pv-tt-stage {
+    @apply relative w-full;
+  }
+  .pv-tt-placeholder {
+    @apply aspect-[9/16] flex flex-col items-center justify-center gap-2 text-white/50 text-[0.8rem];
+  }
+  .pv-tt-stage::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 45%;
+    background: linear-gradient(to top, rgb(0 0 0 / 0.8), transparent);
+    pointer-events: none;
+  }
+  .pv-tt-side {
+    @apply absolute right-2.5 bottom-14 z-[1] flex flex-col items-center gap-4 text-white;
+  }
+  .pv-avatar--tt {
+    background: linear-gradient(135deg, #25f4ee, #fe2c55);
+  }
+  .pv-tt-action {
+    @apply flex flex-col items-center gap-0.5 text-[0.7rem] font-semibold drop-shadow;
+  }
+  .pv-tt-caption {
+    @apply absolute left-0 right-14 bottom-3 z-[1] px-3;
+  }
+  .pv-tt-name {
+    @apply text-white text-[0.9rem];
+  }
+  .pv-tt-text {
+    @apply text-white text-[0.85rem] mb-1.5 mt-1 whitespace-pre-wrap;
+  }
+  .pv-tt-sound {
+    @apply flex items-center gap-1.5 text-white/90 text-[0.75rem];
   }
 
   /* ---------------- Post history ---------------- */

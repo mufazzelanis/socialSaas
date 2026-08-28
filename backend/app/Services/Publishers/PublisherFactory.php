@@ -14,6 +14,7 @@ class PublisherFactory
         'facebook' => FacebookPublisher::class,
         'instagram' => InstagramPublisher::class,
         'linkedin' => LinkedInPublisher::class,
+        'tiktok' => TikTokPublisher::class,
     ];
 
     public static function make(string $platform): SocialPublisherInterface
