@@ -120,7 +120,14 @@ class TikTokPublisher implements SocialPublisherInterface
      */
     protected function queryPrivacyLevel(string $accessToken): string
     {
-        $response = Http::withToken($accessToken)->post(self::API.'/post/publish/creator_info/query/', []);
+        // Not ->post($url, []) — Laravel/Guzzle json-encodes an empty PHP
+        // array as `[]`, and TikTok's endpoint rejects a JSON array body
+        // ("invalid_params: The request parameter type is incorrect") since
+        // it expects an object, even an empty one. Sending the raw `{}`
+        // body directly sidesteps the array-vs-object ambiguity entirely.
+        $response = Http::withToken($accessToken)
+            ->withBody('{}', 'application/json')
+            ->post(self::API.'/post/publish/creator_info/query/');
 
         $options = $response->successful() ? ($response->json('data.privacy_level_options') ?? []) : [];
 
