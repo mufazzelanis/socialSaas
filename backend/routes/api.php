@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Api\Admin\ActivityLogController;
 use App\Http\Controllers\Api\Admin\AdSlotController as AdminAdSlotController;
+use App\Http\Controllers\Api\Admin\AiSettingController;
 use App\Http\Controllers\Api\Admin\PlatformCredentialController;
 use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Api\Admin\SiteSettingController as AdminSiteSettingController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AdSlotController;
+use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandSettingController;
 use App\Http\Controllers\Api\InboxController;
@@ -73,6 +75,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/ad-slots', [AdSlotController::class, 'index']);
     Route::get('/services', [ServiceController::class, 'index']);
 
+    Route::post('/ai/generate', [AiController::class, 'generate']);
+
     Route::get('/conversations', [InboxController::class, 'index']);
     Route::get('/conversations/{conversation}', [InboxController::class, 'show']);
     Route::post('/conversations/{conversation}/reply', [InboxController::class, 'reply']);
@@ -96,6 +100,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/services/{service}', [AdminServiceController::class, 'destroy']);
 
         Route::post('/site-settings', [AdminSiteSettingController::class, 'update']);
+
+        Route::get('/ai-settings', [AiSettingController::class, 'show']);
+        Route::post('/ai-settings', [AiSettingController::class, 'update']);
     });
 
     // Branding is a super-admin-only customization (logo/favicon/color for

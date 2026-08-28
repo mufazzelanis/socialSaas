@@ -100,7 +100,12 @@ export default function AdminDashboard() {
           onClearPreset={() => setLoginHistoryTarget(null)}
         />
       )}
-      {tab === 'credentials' && <CredentialsPanel />}
+      {tab === 'credentials' && (
+        <>
+          <CredentialsPanel />
+          <AiSettingsPanel />
+        </>
+      )}
       {tab === 'ads' && <AdsPanel />}
       {tab === 'promote' && <PromotePanel />}
     </Layout>
@@ -892,6 +897,98 @@ function AdsPanel() {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function AiSettingsPanel() {
+  const [settings, setSettings] = useState(null);
+  const [apiKey, setApiKey] = useState('');
+  const [model, setModel] = useState('');
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  const load = () => {
+    api.get('/admin/ai-settings').then((res) => {
+      setSettings(res.data);
+      setModel(res.data.model || '');
+      setEnabled(!!res.data.is_enabled);
+    });
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const save = async () => {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await api.post('/admin/ai-settings', {
+        api_key: apiKey || undefined,
+        model: model || null,
+        is_enabled: enabled,
+      });
+      setMessage('AI settings saved.');
+      setApiKey('');
+      load();
+    } catch (err) {
+      const errors = err.response?.data?.errors;
+      const firstError = errors ? Object.values(errors)[0]?.[0] : null;
+      setError(firstError || err.response?.data?.message || 'Could not save.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!settings) return <p>Loading...</p>;
+
+  return (
+    <div className="card">
+      <h2>AI Post Writer</h2>
+      <p className="muted">
+        Powers the "✨ Generate with AI" button in Create Post — a user describes the post they
+        want and Claude writes a ready-to-edit caption. Uses your own Anthropic API key (usage is
+        billed to that account, a small fraction of a cent per generation).
+      </p>
+
+      {error && <div className="alert alert-error">{error}</div>}
+      {message && <div className="alert alert-info">{message}</div>}
+
+      <label className="field">
+        <span>Anthropic API Key</span>
+        <input
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder={settings.has_key ? '••••••••••••••••' : 'sk-ant-...'}
+        />
+        <span className="muted small">
+          Create one at{' '}
+          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
+            console.anthropic.com
+          </a>
+          .
+        </span>
+      </label>
+
+      <label className="field">
+        <span>Model (optional)</span>
+        <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="claude-sonnet-5" />
+        <span className="muted small">Leave blank to use claude-sonnet-5.</span>
+      </label>
+
+      <label className="toggle mb-3.5">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        Enable AI post generation
+      </label>
+
+      <button className="btn btn-primary btn-small" disabled={busy} onClick={save}>
+        {busy ? 'Saving...' : 'Save'}
+      </button>
     </div>
   );
 }

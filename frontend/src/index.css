@@ -1401,4 +1401,18 @@
   .inbox-reply-box input {
     @apply flex-1 border border-border rounded-full px-4 py-2 bg-bg text-text text-[0.9rem] outline-none;
   }
+
+  /* ---------------- AI post generation ---------------- */
+  .ai-generate {
+    @apply mb-3;
+  }
+  .ai-generate-panel {
+    @apply border border-border rounded-xl p-3 bg-bg flex flex-col gap-2;
+  }
+  .ai-generate-input {
+    @apply w-full border border-border rounded-lg p-2.5 bg-surface text-text text-[0.9rem] resize-none outline-none;
+  }
+  .ai-generate-actions {
+    @apply flex gap-2;
+  }
 }

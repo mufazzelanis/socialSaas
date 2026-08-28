@@ -94,6 +94,10 @@ export default function CreatePost() {
   const [accounts, setAccounts] = useState([]);
   const [selected, setSelected] = useState([]);
   const [contentHtml, setContentHtml] = useState('');
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState('');
   // [{ file, kind: 'image'|'video', preview: objectURL }, ...] — 1 item
   // behaves exactly like the old single-attachment composer; 2+ becomes a
   // carousel/album/media-group depending on what each selected platform
@@ -256,6 +260,34 @@ export default function CreatePost() {
     return { count: text.length, limit, over: text.length > limit, rules };
   };
 
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+
+    if (!isTextEmpty(contentHtml) && !window.confirm('Replace your current draft with the AI-generated text?')) {
+      return;
+    }
+
+    setAiBusy(true);
+    setAiError('');
+    try {
+      const res = await api.post('/ai/generate', { prompt: aiPrompt.trim() });
+      // The API returns plain text with blank lines between paragraphs —
+      // turn that into simple HTML for the rich text editor rather than
+      // dumping raw newlines into it.
+      const html = res.data.content
+        .split(/\n{2,}/)
+        .map((para) => `<p>${para.replace(/\n/g, '<br>')}</p>`)
+        .join('');
+      setContentHtml(html);
+      setAiOpen(false);
+      setAiPrompt('');
+    } catch (err) {
+      setAiError(err.response?.data?.message || 'Could not generate a post right now.');
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -323,6 +355,46 @@ export default function CreatePost() {
       <div className="composer-grid">
         <form className="card" onSubmit={handleSubmit}>
           {error && <div className="alert alert-error">{error}</div>}
+
+          <div className="ai-generate">
+            {!aiOpen ? (
+              <button type="button" className="btn btn-ghost btn-small" onClick={() => setAiOpen(true)}>
+                ✨ Generate with AI
+              </button>
+            ) : (
+              <div className="ai-generate-panel">
+                {aiError && <div className="alert alert-error">{aiError}</div>}
+                <textarea
+                  className="ai-generate-input"
+                  placeholder="Describe the post you want, e.g. &quot;Eid offer post, 30% off, cheerful tone&quot;"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  rows={2}
+                  disabled={aiBusy}
+                />
+                <div className="ai-generate-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-small"
+                    disabled={aiBusy || !aiPrompt.trim()}
+                    onClick={handleAiGenerate}
+                  >
+                    {aiBusy ? 'Generating...' : 'Generate'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-small"
+                    onClick={() => {
+                      setAiOpen(false);
+                      setAiError('');
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           <label className="field">
             <span>What's on your mind?</span>
