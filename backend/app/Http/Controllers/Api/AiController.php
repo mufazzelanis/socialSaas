@@ -20,13 +20,15 @@ class AiController extends Controller
     ];
 
     // Image generation only for providers that actually support it —
-    // Claude has no image-generation capability at all. OpenAI's image
-    // models are a separate family from its chat models (gpt-5 can't draw),
-    // so this needs its own default; Gemini's flash models generate images
-    // natively from the same chat model, so there's no separate entry here
-    // — generateImage() falls back to DEFAULT_MODELS['gemini'] instead.
+    // Claude has no image-generation capability at all. Both OpenAI and
+    // Gemini need a DIFFERENT model family for images than for chat text
+    // (confirmed directly against Gemini: passing responseModalities:
+    // ["IMAGE"] to a plain chat model like gemini-3.6-flash returns
+    // finishReason "NO_IMAGE" rather than an error — it just silently
+    // can't do it — a dedicated "-image" model is required).
     protected const DEFAULT_IMAGE_MODELS = [
         'openai' => 'gpt-image-1',
+        'gemini' => 'gemini-3.1-flash-image',
     ];
 
     protected const SYSTEM_PROMPT = <<<'PROMPT'
@@ -110,7 +112,7 @@ class AiController extends Controller
                 ),
                 'gemini' => $this->generateImageWithGemini(
                     $apiKey,
-                    $setting->image_model ?: ($setting->model ?: self::DEFAULT_MODELS['gemini']),
+                    $setting->image_model ?: self::DEFAULT_IMAGE_MODELS['gemini'],
                     $data['prompt']
                 ),
             };

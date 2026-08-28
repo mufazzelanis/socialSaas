@@ -926,10 +926,10 @@ const AI_PROVIDERS = {
     keysUrl: 'https://aistudio.google.com/apikey',
     keysHost: 'aistudio.google.com',
     imageSupported: true,
-    // No separate default — Gemini's flash models generate images
-    // natively from the same chat model, so this just falls back to
-    // whatever Model (or the default above) is already set.
-    defaultImageModel: null,
+    // A different model family from the plain chat model above — confirmed
+    // directly: asking gemini-3.6-flash for an image just returns
+    // finishReason "NO_IMAGE" rather than an error.
+    defaultImageModel: 'gemini-3.1-flash-image',
   },
 };
 
