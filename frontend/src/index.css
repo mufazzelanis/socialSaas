@@ -520,6 +520,43 @@
     @apply text-right text-[0.82rem] -mt-2 mb-4;
   }
 
+  /* Privacy Policy / Terms of Service — plain, scrollable content pages
+     (unlike .auth-page these aren't a fixed-height centered card, since
+     legal text runs much longer than a login form). */
+  .legal-page {
+    @apply min-h-screen flex flex-col items-center gap-6 py-10 px-4 bg-bg;
+  }
+  .legal-card {
+    @apply bg-surface border border-border rounded-2xl p-6 sm:p-10 w-full max-w-[760px] shadow-sm;
+  }
+  .legal-card h1 {
+    @apply text-2xl font-bold mb-1;
+  }
+  .legal-updated {
+    @apply text-text-muted text-[0.85rem] mb-6;
+  }
+  .legal-card h2 {
+    @apply text-lg font-semibold mt-7 mb-2;
+  }
+  .legal-card h2:first-of-type {
+    @apply mt-0;
+  }
+  .legal-card p {
+    @apply text-text-muted text-[0.92rem] leading-relaxed mb-3;
+  }
+  .legal-card ul {
+    @apply list-disc pl-5 mb-3 text-text-muted text-[0.92rem] leading-relaxed;
+  }
+  .legal-card li {
+    @apply mb-1.5;
+  }
+  .legal-card a {
+    @apply text-primary underline;
+  }
+  .legal-footer-nav {
+    @apply text-center text-[0.88rem] text-text-muted mt-6;
+  }
+
   .page-loading {
     @apply p-10 flex flex-col items-center justify-center gap-3 text-text-muted;
   }
