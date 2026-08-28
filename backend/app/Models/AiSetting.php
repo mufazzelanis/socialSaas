@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class AiSetting extends Model
 {
     protected $fillable = [
+        'provider',
         'api_key',
         'model',
         'is_enabled',

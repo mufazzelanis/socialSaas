@@ -901,8 +901,33 @@ function AdsPanel() {
   );
 }
 
+const AI_PROVIDERS = {
+  claude: {
+    label: 'Claude (Anthropic)',
+    keyPlaceholder: 'sk-ant-...',
+    defaultModel: 'claude-sonnet-5',
+    keysUrl: 'https://console.anthropic.com/settings/keys',
+    keysHost: 'console.anthropic.com',
+  },
+  openai: {
+    label: 'ChatGPT (OpenAI)',
+    keyPlaceholder: 'sk-...',
+    defaultModel: 'gpt-5',
+    keysUrl: 'https://platform.openai.com/api-keys',
+    keysHost: 'platform.openai.com',
+  },
+  gemini: {
+    label: 'Gemini (Google)',
+    keyPlaceholder: 'AIza...',
+    defaultModel: 'gemini-2.5-flash',
+    keysUrl: 'https://aistudio.google.com/apikey',
+    keysHost: 'aistudio.google.com',
+  },
+};
+
 function AiSettingsPanel() {
   const [settings, setSettings] = useState(null);
+  const [provider, setProvider] = useState('claude');
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState('');
   const [enabled, setEnabled] = useState(false);
@@ -913,6 +938,7 @@ function AiSettingsPanel() {
   const load = () => {
     api.get('/admin/ai-settings').then((res) => {
       setSettings(res.data);
+      setProvider(res.data.provider || 'claude');
       setModel(res.data.model || '');
       setEnabled(!!res.data.is_enabled);
     });
@@ -922,12 +948,22 @@ function AiSettingsPanel() {
     load();
   }, []);
 
+  // Switching provider server-side clears the old (now-useless) key —
+  // reflect that immediately here too, and clear whatever was mid-typing
+  // in the key field, so the UI doesn't imply a stale key is still active.
+  const handleProviderChange = (next) => {
+    setProvider(next);
+    setApiKey('');
+    setModel('');
+  };
+
   const save = async () => {
     setBusy(true);
     setError('');
     setMessage('');
     try {
       await api.post('/admin/ai-settings', {
+        provider,
         api_key: apiKey || undefined,
         model: model || null,
         is_enabled: enabled,
@@ -946,39 +982,55 @@ function AiSettingsPanel() {
 
   if (!settings) return <p>Loading...</p>;
 
+  const info = AI_PROVIDERS[provider] || AI_PROVIDERS.claude;
+  const keyChangedSinceLoad = provider !== (settings.provider || 'claude');
+
   return (
     <div className="card">
       <h2>AI Post Writer</h2>
       <p className="muted">
         Powers the "✨ Generate with AI" button in Create Post — a user describes the post they
-        want and Claude writes a ready-to-edit caption. Uses your own Anthropic API key (usage is
-        billed to that account, a small fraction of a cent per generation).
+        want and it writes a ready-to-edit caption. Uses your own API key for whichever provider
+        you pick below (usage is billed to that account, a small fraction of a cent per
+        generation).
       </p>
 
       {error && <div className="alert alert-error">{error}</div>}
       {message && <div className="alert alert-info">{message}</div>}
 
       <label className="field">
-        <span>Anthropic API Key</span>
+        <span>Provider</span>
+        <select value={provider} onChange={(e) => handleProviderChange(e.target.value)}>
+          {Object.entries(AI_PROVIDERS).map(([key, p]) => (
+            <option key={key} value={key}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="field">
+        <span>API Key</span>
         <input
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          placeholder={settings.has_key ? '••••••••••••••••' : 'sk-ant-...'}
+          placeholder={settings.has_key && !keyChangedSinceLoad ? '••••••••••••••••' : info.keyPlaceholder}
         />
         <span className="muted small">
           Create one at{' '}
-          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
-            console.anthropic.com
+          <a href={info.keysUrl} target="_blank" rel="noreferrer">
+            {info.keysHost}
           </a>
           .
+          {keyChangedSinceLoad && ' Switching provider needs a fresh key for it.'}
         </span>
       </label>
 
       <label className="field">
         <span>Model (optional)</span>
-        <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="claude-sonnet-5" />
-        <span className="muted small">Leave blank to use claude-sonnet-5.</span>
+        <input value={model} onChange={(e) => setModel(e.target.value)} placeholder={info.defaultModel} />
+        <span className="muted small">Leave blank to use {info.defaultModel}.</span>
       </label>
 
       <label className="toggle mb-3.5">

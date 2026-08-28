@@ -9,7 +9,11 @@ use Illuminate\Support\Facades\Http;
 
 class AiController extends Controller
 {
-    protected const DEFAULT_MODEL = 'claude-sonnet-5';
+    protected const DEFAULT_MODELS = [
+        'claude' => 'claude-sonnet-5',
+        'openai' => 'gpt-5',
+        'gemini' => 'gemini-2.5-flash',
+    ];
 
     protected const SYSTEM_PROMPT = <<<'PROMPT'
         You write social media post captions for a business owner. Given their
@@ -40,33 +44,82 @@ class AiController extends Controller
             ], 422);
         }
 
-        $response = Http::timeout(30)
-            ->withHeaders([
-                'x-api-key' => $apiKey,
-                'anthropic-version' => '2023-06-01',
-            ])
-            ->post('https://api.anthropic.com/v1/messages', [
-                'model' => $setting->model ?: self::DEFAULT_MODEL,
-                'max_tokens' => 1024,
-                'system' => self::SYSTEM_PROMPT,
-                'messages' => [
-                    ['role' => 'user', 'content' => $data['prompt']],
-                ],
-            ]);
+        $provider = $setting->provider ?: 'claude';
+        $model = $setting->model ?: self::DEFAULT_MODELS[$provider];
 
-        if (! $response->successful()) {
-            return response()->json([
-                'message' => $response->json('error.message') ?? 'AI generation failed — try again.',
-            ], 422);
+        try {
+            $text = match ($provider) {
+                'openai' => $this->generateWithOpenAi($apiKey, $model, $data['prompt']),
+                'gemini' => $this->generateWithGemini($apiKey, $model, $data['prompt']),
+                default => $this->generateWithClaude($apiKey, $model, $data['prompt']),
+            };
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
-
-        $text = collect($response->json('content'))
-            ->firstWhere('type', 'text')['text'] ?? null;
 
         if (! $text) {
             return response()->json(['message' => 'AI did not return any text.'], 422);
         }
 
         return response()->json(['content' => trim($text)]);
+    }
+
+    protected function generateWithClaude(string $apiKey, string $model, string $prompt): ?string
+    {
+        $response = Http::timeout(30)
+            ->withHeaders([
+                'x-api-key' => $apiKey,
+                'anthropic-version' => '2023-06-01',
+            ])
+            ->post('https://api.anthropic.com/v1/messages', [
+                'model' => $model,
+                'max_tokens' => 1024,
+                'system' => self::SYSTEM_PROMPT,
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+            ]);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($response->json('error.message') ?? 'Claude request failed — try again.');
+        }
+
+        return collect($response->json('content'))->firstWhere('type', 'text')['text'] ?? null;
+    }
+
+    protected function generateWithOpenAi(string $apiKey, string $model, string $prompt): ?string
+    {
+        $response = Http::timeout(30)
+            ->withToken($apiKey)
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => $model,
+                'messages' => [
+                    ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+            ]);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($response->json('error.message') ?? 'ChatGPT request failed — try again.');
+        }
+
+        return $response->json('choices.0.message.content');
+    }
+
+    protected function generateWithGemini(string $apiKey, string $model, string $prompt): ?string
+    {
+        $response = Http::timeout(30)
+            ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
+                'system_instruction' => ['parts' => [['text' => self::SYSTEM_PROMPT]]],
+                'contents' => [
+                    ['role' => 'user', 'parts' => [['text' => $prompt]]],
+                ],
+            ]);
+
+        if (! $response->successful()) {
+            throw new \RuntimeException($response->json('error.message') ?? 'Gemini request failed — try again.');
+        }
+
+        return $response->json('candidates.0.content.parts.0.text');
     }
 }

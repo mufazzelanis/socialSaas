@@ -7,6 +7,7 @@ use App\Models\AiSetting;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AiSettingController extends Controller
 {
@@ -18,6 +19,7 @@ class AiSettingController extends Controller
     public function update(Request $request)
     {
         $data = $request->validate([
+            'provider' => ['sometimes', Rule::in(['claude', 'openai', 'gemini'])],
             'api_key' => ['nullable', 'string', 'max:500'],
             'model' => ['nullable', 'string', 'max:100'],
             'is_enabled' => ['sometimes', 'boolean'],
@@ -36,6 +38,17 @@ class AiSettingController extends Controller
                 $setting = AiSetting::find($setting->id);
             }
         }
+
+        // A key saved for one provider is meaningless (and would just
+        // fail) sent to a different one's API — switching providers
+        // without supplying a fresh key clears the old one rather than
+        // silently keeping an invalid key attached to the new provider.
+        if (array_key_exists('provider', $data) && $data['provider'] !== $setting->provider) {
+            $setting->api_key = null;
+            $setting->model = null;
+        }
+
+        $setting->provider = $data['provider'] ?? $setting->provider;
 
         // Only overwrite the key if a new one was actually submitted — the
         // frontend never sees the real value, only whether one is set.
