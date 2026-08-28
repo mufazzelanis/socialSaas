@@ -113,7 +113,12 @@ export default function CreatePost() {
   const [activePreview, setActivePreview] = useState('facebook');
 
   useEffect(() => {
-    api.get('/social-accounts').then((res) => setAccounts(res.data));
+    // WhatsApp is messaging-only (no concept of a broadcast "post" —
+    // see /inbox instead), so it never appears as a platform to publish to
+    // here, unlike every other connected account.
+    api
+      .get('/social-accounts')
+      .then((res) => setAccounts(res.data.filter((acc) => acc.platform !== 'whatsapp')));
   }, []);
 
   const toggleAccount = (id) => {

@@ -10,11 +10,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Handles both Facebook Messenger and Instagram DM webhooks — Meta
- * subscribes both under one app-level webhook URL, distinguishing them
- * only by the `object` field ("page" vs "instagram") in the POST body, so
- * one controller covers both rather than duplicating the verify/signature
- * logic twice.
+ * Handles Facebook Messenger, Instagram DM, AND WhatsApp webhooks — Meta
+ * subscribes all three under one app-level webhook URL, distinguishing them
+ * only by the `object` field ("page", "instagram", or
+ * "whatsapp_business_account") in the POST body, so one controller covers
+ * all of them rather than duplicating the verify/signature logic three
+ * times. WhatsApp's own payload shape (entry[].changes[].value...) is
+ * different enough from Messenger/Instagram's (entry[].messaging[]) that
+ * it gets its own parsing method rather than being forced into the same
+ * shape.
  */
 class MetaWebhookController extends Controller
 {
@@ -53,6 +57,13 @@ class MetaWebhookController extends Controller
         }
 
         $object = $request->input('object');
+
+        if ($object === 'whatsapp_business_account') {
+            $this->handleWhatsappEntries($request->input('entry', []));
+
+            return response()->json(['ok' => true]);
+        }
+
         $platform = match ($object) {
             'page' => 'facebook',
             'instagram' => 'instagram',
@@ -105,6 +116,54 @@ class MetaWebhookController extends Controller
             externalMessageId: $event['message']['mid'] ?? null,
             mediaUrl: $event['message']['attachments'][0]['payload']['url'] ?? null,
         );
+    }
+
+    /**
+     * WhatsApp nests everything under entry[].changes[].value — a whole
+     * different shape from Messenger/Instagram's entry[].messaging[], and
+     * the same webhook also fires for delivery/read status updates (under
+     * value.statuses instead of value.messages), which this skips.
+     */
+    protected function handleWhatsappEntries(array $entries): void
+    {
+        foreach ($entries as $entry) {
+            foreach ($entry['changes'] ?? [] as $change) {
+                $value = $change['value'] ?? [];
+                $phoneNumberId = $value['metadata']['phone_number_id'] ?? null;
+
+                if (! $phoneNumberId || empty($value['messages'])) {
+                    continue;
+                }
+
+                $account = SocialAccount::where('platform', 'whatsapp')->where('account_id', $phoneNumberId)->first();
+
+                if (! $account) {
+                    Log::info('Meta webhook: WhatsApp message for an unconnected number, ignored.', ['phone_number_id' => $phoneNumberId]);
+
+                    continue;
+                }
+
+                $contactNames = collect($value['contacts'] ?? [])
+                    ->keyBy('wa_id')
+                    ->map(fn (array $c) => $c['profile']['name'] ?? null);
+
+                foreach ($value['messages'] as $message) {
+                    $from = $message['from'] ?? null;
+
+                    if (! $from) {
+                        continue;
+                    }
+
+                    $this->ingestion->ingestInbound(
+                        account: $account,
+                        participantId: $from,
+                        participantName: $contactNames->get($from),
+                        content: $message['text']['body'] ?? null,
+                        externalMessageId: $message['id'] ?? null,
+                    );
+                }
+            }
+        }
     }
 
     /**

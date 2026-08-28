@@ -7,6 +7,7 @@ const PLATFORM_LABELS = {
   telegram: 'Telegram',
   facebook: 'Facebook',
   instagram: 'Instagram',
+  whatsapp: 'WhatsApp',
 };
 
 // No platform here pushes updates to the browser directly (no WebSocket

@@ -13,6 +13,7 @@ class MessagingConnectorFactory
         'telegram' => TelegramMessagingConnector::class,
         'facebook' => MetaMessagingConnector::class,
         'instagram' => MetaMessagingConnector::class,
+        'whatsapp' => WhatsAppMessagingConnector::class,
     ];
 
     public static function make(string $platform): MessagingConnectorInterface

@@ -10,9 +10,10 @@ const PLATFORM_LABELS = {
   instagram: 'Instagram',
   linkedin: 'LinkedIn',
   tiktok: 'TikTok',
+  whatsapp: 'WhatsApp',
 };
 
-const ALL_PLATFORMS = ['telegram', 'facebook', 'instagram', 'linkedin', 'tiktok'];
+const ALL_PLATFORMS = ['telegram', 'facebook', 'instagram', 'linkedin', 'tiktok', 'whatsapp'];
 
 function OAuthResultBanner() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -112,6 +113,25 @@ export default function ConnectAccounts() {
       setError(firstError || err.response?.data?.message || 'Could not connect account.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const [whatsappBusy, setWhatsappBusy] = useState(false);
+
+  const handleConnectWhatsapp = async () => {
+    setWhatsappBusy(true);
+    setError('');
+    setSuccess('');
+    try {
+      await api.post('/social-accounts', { platform: 'whatsapp' });
+      setSuccess('WhatsApp account connected successfully.');
+      loadAccounts(true);
+    } catch (err) {
+      const errors = err.response?.data?.errors;
+      const firstError = errors ? Object.values(errors)[0]?.[0] : null;
+      setError(firstError || err.response?.data?.message || 'Could not connect WhatsApp.');
+    } finally {
+      setWhatsappBusy(false);
     }
   };
 
@@ -246,6 +266,25 @@ export default function ConnectAccounts() {
             onClick={() => handleConnectOAuth('tiktok')}
           >
             {oauthBusy === 'tiktok' ? 'Opening TikTok...' : '🎵 Log in with TikTok'}
+          </button>
+        )}
+      </div>
+
+      <div className="card">
+        <h2>WhatsApp</h2>
+        <p className="muted">
+          Messaging only (no scheduled posts) — replies here go through your business's
+          WhatsApp number. While in Meta's test mode, only phone numbers your admin has
+          verified can actually message it.
+        </p>
+
+        {!allowed.includes('whatsapp') ? (
+          <div className="alert alert-info">
+            🔒 Not available for your account yet. Ask your admin to turn it on for you.
+          </div>
+        ) : (
+          <button className="btn btn-primary" disabled={whatsappBusy} onClick={handleConnectWhatsapp}>
+            {whatsappBusy ? 'Connecting...' : '💬 Connect WhatsApp'}
           </button>
         )}
       </div>

@@ -48,6 +48,7 @@ class SocialAccountController extends Controller
 
         return match ($platform) {
             'telegram' => $this->connectTelegram($request),
+            'whatsapp' => $this->connectWhatsapp($request),
             default => response()->json(['message' => ucfirst($platform)." connects via OAuth — use GET /social-accounts/oauth/{$platform}/redirect, not this endpoint."], 422),
         };
     }
@@ -107,6 +108,54 @@ class SocialAccountController extends Controller
         );
 
         ActivityLogger::log($request->user(), 'account_connected', "Connected Telegram account [{$account->account_name}].", ['social_account_id' => $account->id]);
+
+        return response()->json($account, 201);
+    }
+
+    /**
+     * Unlike Telegram (a per-user chat id on a shared bot), WhatsApp here
+     * is one shared business phone number — while in Meta's free test mode
+     * there's only one to connect, so this just confirms it works and
+     * attaches it, no per-user identifier to collect.
+     */
+    protected function connectWhatsapp(Request $request)
+    {
+        $credential = PlatformCredential::where('platform', 'whatsapp')->first();
+
+        if (! $credential || ! $credential->is_enabled || ! $credential->has_secret || ! $credential->client_id) {
+            throw ValidationException::withMessages([
+                'platform' => ['WhatsApp isn\'t set up yet — ask your admin to configure it first.'],
+            ]);
+        }
+
+        $phoneNumberId = $credential->client_id;
+        $accessToken = $credential->client_secret;
+
+        $response = Http::withToken($accessToken)->get(
+            "https://graph.facebook.com/".config('social.facebook_graph_version')."/{$phoneNumberId}",
+            ['fields' => 'verified_name,display_phone_number']
+        );
+
+        if (! $response->successful()) {
+            throw ValidationException::withMessages([
+                'platform' => [$response->json('error.message') ?? 'Could not verify this WhatsApp number.'],
+            ]);
+        }
+
+        $data = $response->json();
+        $displayName = $data['verified_name'] ?? $data['display_phone_number'] ?? 'WhatsApp Business';
+
+        $account = $request->user()->socialAccounts()->updateOrCreate(
+            ['platform' => 'whatsapp', 'account_id' => $phoneNumberId],
+            [
+                'account_name' => $displayName,
+                'access_token' => $accessToken,
+                'status' => 'connected',
+                'meta' => ['display_phone_number' => $data['display_phone_number'] ?? null],
+            ]
+        );
+
+        ActivityLogger::log($request->user(), 'account_connected', "Connected WhatsApp account [{$account->account_name}].", ['social_account_id' => $account->id]);
 
         return response()->json($account, 201);
     }

@@ -25,7 +25,7 @@ const AD_NETWORK_LABELS = {
   custom: 'Custom / other',
 };
 
-const ALL_PLATFORMS = ['telegram', 'facebook', 'instagram', 'linkedin', 'tiktok'];
+const ALL_PLATFORMS = ['telegram', 'facebook', 'instagram', 'linkedin', 'tiktok', 'whatsapp'];
 
 const PLATFORM_LABELS = {
   telegram: 'Telegram',
@@ -33,6 +33,7 @@ const PLATFORM_LABELS = {
   instagram: 'Instagram',
   linkedin: 'LinkedIn',
   tiktok: 'TikTok',
+  whatsapp: 'WhatsApp',
 };
 
 const EVENT_LABELS = {
@@ -646,17 +647,31 @@ function CredentialsPanel() {
                     ? 'Bot Username'
                     : cred.platform === 'tiktok'
                       ? 'Client Key'
-                      : 'Client ID / App ID'}
+                      : cred.platform === 'whatsapp'
+                        ? 'Phone Number ID'
+                        : 'Client ID / App ID'}
                 </span>
                 <input
                   value={draft.client_id ?? cred.client_id ?? ''}
                   onChange={(e) => setDraft(cred.platform, 'client_id', e.target.value)}
-                  placeholder={cred.platform === 'telegram' ? '@MySaaSBot' : undefined}
+                  placeholder={
+                    cred.platform === 'telegram'
+                      ? '@MySaaSBot'
+                      : cred.platform === 'whatsapp'
+                        ? 'e.g. 109876543210987'
+                        : undefined
+                  }
                 />
               </label>
 
               <label className="field">
-                <span>{cred.platform === 'telegram' ? 'Bot Token' : 'Client Secret'}</span>
+                <span>
+                  {cred.platform === 'telegram'
+                    ? 'Bot Token'
+                    : cred.platform === 'whatsapp'
+                      ? 'Permanent Access Token'
+                      : 'Client Secret'}
+                </span>
                 <input
                   type="password"
                   value={draft.client_secret ?? ''}
@@ -708,6 +723,23 @@ function CredentialsPanel() {
                     </p>
                   )}
                 </>
+              )}
+
+              {cred.platform === 'whatsapp' && (
+                <p className="muted small">
+                  From Meta Developer Console → your app → <strong>WhatsApp → API Setup</strong>,
+                  copy the Phone Number ID and a (permanent, not temporary) access token above.
+                  While unaudited, add up to 5 recipient numbers there under "To" so they can
+                  actually message this number.{' '}
+                  {credentials.find((c) => c.platform === 'facebook')?.webhook_secret && (
+                    <>
+                      For the Inbox feature: in <strong>Webhooks</strong>, use the same Callback
+                      URL/Verify Token shown on the Facebook card above, but subscribe to{' '}
+                      <code>messages</code> on the <strong>WhatsApp Business Account</strong>{' '}
+                      object instead.
+                    </>
+                  )}
+                </p>
               )}
 
               {cred.platform === 'tiktok' && (

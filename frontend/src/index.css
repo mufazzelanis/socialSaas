@@ -583,6 +583,9 @@
   .platform-tiktok {
     background: #000000;
   }
+  .platform-whatsapp {
+    background: #25d366;
+  }
 
   .status-dot {
     @apply inline-block w-2 h-2 rounded-full ml-2;
