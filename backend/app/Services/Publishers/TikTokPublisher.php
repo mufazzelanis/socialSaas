@@ -131,8 +131,13 @@ class TikTokPublisher implements SocialPublisherInterface
 
         $options = $response->successful() ? ($response->json('data.privacy_level_options') ?? []) : [];
 
-        if (in_array('SELF_ONLY', $options, true)) {
-            return 'SELF_ONLY';
+        // Prefer a real public post once this app is allowed one — while
+        // it's unaudited, TikTok's own creator_info response simply won't
+        // offer PUBLIC_TO_EVERYONE as an option at all (SELF_ONLY is all
+        // that's on offer), so this still posts privately during Sandbox
+        // testing without needing a separate "are we approved yet?" check.
+        if (in_array('PUBLIC_TO_EVERYONE', $options, true)) {
+            return 'PUBLIC_TO_EVERYONE';
         }
 
         return $options[0] ?? 'SELF_ONLY';
