@@ -12,7 +12,11 @@ class AiController extends Controller
     protected const DEFAULT_MODELS = [
         'claude' => 'claude-sonnet-5',
         'openai' => 'gpt-5',
-        'gemini' => 'gemini-2.5-flash',
+        // Google retires Gemini model names fairly often — if this starts
+        // erroring with "no longer available", the error message itself
+        // names the current replacement; update here (or just set a Model
+        // override in Admin Dashboard, no code change needed).
+        'gemini' => 'gemini-3.6-flash',
     ];
 
     protected const SYSTEM_PROMPT = <<<'PROMPT'
