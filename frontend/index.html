@@ -33,6 +33,42 @@
           document.documentElement.setAttribute('data-theme', theme);
         } catch (e) {}
       })();
+
+      // Same idea for the tenant's own favicon/title/theme-color: this tag
+      // ships with the generic defaults baked in, and BrandProvider
+      // (src/context/BrandContext.jsx) only learns the real branding after
+      // its own JS chunk loads and /brand-settings resolves. On a reload
+      // that gap is exactly when the browser paints the tab icon, so
+      // without this, every reload shows the default favicon.svg for a
+      // beat (or, on browsers slow to re-poll a changed <link href>, keeps
+      // showing it). BrandProvider caches the last-fetched branding here on
+      // every successful load, so this runs first and applies it
+      // immediately, then BrandProvider re-fetches and corrects it if the
+      // branding has changed since the cache was written.
+      (function () {
+        try {
+          var cached = JSON.parse(localStorage.getItem('brand_cache') || 'null');
+          if (!cached) return;
+          if (cached.brand_name) document.title = cached.brand_name;
+          if (cached.primary_color) {
+            var themeColor = document.querySelector("meta[name='theme-color']");
+            if (themeColor) themeColor.content = cached.primary_color;
+          }
+          var iconHref = cached.favicon_url || null;
+          if (iconHref) {
+            var icon = document.querySelector("link[rel~='icon']");
+            if (icon) {
+              icon.href = iconHref;
+              icon.removeAttribute('type');
+            }
+          }
+          var touchHref = cached.favicon_url || cached.logo_url || null;
+          if (touchHref) {
+            var touch = document.querySelector("link[rel='apple-touch-icon']");
+            if (touch) touch.href = touchHref;
+          }
+        } catch (e) {}
+      })();
     </script>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

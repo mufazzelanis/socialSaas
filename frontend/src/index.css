@@ -495,7 +495,10 @@
     animation: float-blob 18s ease-in-out infinite reverse;
   }
   .auth-brand {
-    @apply relative z-10 flex items-center justify-center animate-in;
+    @apply relative z-10 flex items-center justify-center animate-in no-underline transition-transform;
+  }
+  .auth-brand:hover {
+    @apply scale-[1.03];
   }
   .auth-brand-logo-chip {
     @apply inline-flex bg-white/95 rounded-2xl px-5 py-3 shadow-xl;
