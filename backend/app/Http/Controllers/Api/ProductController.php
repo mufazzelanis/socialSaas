@@ -23,4 +23,20 @@ class ProductController extends Controller
 
         return response()->json($products);
     }
+
+    /**
+     * One product's own page — this is what gives each product a real,
+     * shareable, bookmarkable URL (/shop/product/{id}) instead of only
+     * being reachable through a client-side modal on the listing page.
+     * A disabled product 404s the same as one that never existed, rather
+     * than leaking that it exists but is hidden.
+     */
+    public function show(DigitalProduct $product)
+    {
+        if (! $product->is_enabled) {
+            abort(404);
+        }
+
+        return response()->json($product);
+    }
 }

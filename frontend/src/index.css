@@ -1555,4 +1555,10 @@
   .order-status-icon--error {
     @apply text-danger;
   }
+  .product-detail-title {
+    @apply text-xl mb-2;
+  }
+  .product-detail-price {
+    @apply text-[1.25rem];
+  }
 }

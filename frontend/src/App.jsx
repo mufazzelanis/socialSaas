@@ -19,6 +19,7 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const Privacy = lazy(() => import('./pages/Privacy'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Shop = lazy(() => import('./pages/Shop'));
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
 const OrderStatus = lazy(() => import('./pages/OrderStatus'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ConnectAccounts = lazy(() => import('./pages/ConnectAccounts'));
@@ -56,6 +57,7 @@ export default function App() {
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/shop" element={<Shop />} />
+                <Route path="/shop/product/:id" element={<ProductDetail />} />
                 <Route path="/order/:tranId" element={<OrderStatus />} />
                 <Route
                   path="/"

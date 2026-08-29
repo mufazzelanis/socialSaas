@@ -60,6 +60,7 @@ Route::post('/webhooks/meta', [MetaWebhookController::class, 'handle']);
 // Public: the digital products storefront — no login required to browse or
 // buy, same as any normal shop page.
 Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{product}', [ProductController::class, 'show']);
 Route::post('/orders', [OrderController::class, 'store']);
 Route::get('/orders/{tranId}', [OrderController::class, 'show']);
 Route::get('/orders/{tranId}/download/{token}', [OrderController::class, 'download']);
