@@ -113,6 +113,7 @@ export default function AdminDashboard() {
         <>
           <DigitalProductsPanel />
           <PaymentSettingsPanel />
+          <ShopWhatsAppPanel />
         </>
       )}
     </Layout>
@@ -1236,6 +1237,62 @@ function TelegramButtonPanel() {
       <label className="toggle mb-3.5">
         <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
         Show the floating button
+      </label>
+
+      <button className="btn btn-primary btn-small" disabled={busy} onClick={save}>
+        {busy ? 'Saving...' : 'Save'}
+      </button>
+    </div>
+  );
+}
+
+function ShopWhatsAppPanel() {
+  const [settings, setSettings] = useState(null);
+  const [number, setNumber] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const load = () => {
+    api.get('/site-settings').then((res) => {
+      setSettings(res.data);
+      setNumber(res.data.shop_whatsapp_number || '');
+    });
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const save = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      await api.post('/admin/site-settings', { shop_whatsapp_number: number });
+      setMessage('Shop WhatsApp number saved.');
+      load();
+    } catch (err) {
+      setMessage(err.response?.data?.message || 'Could not save.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!settings) return <p>Loading...</p>;
+
+  return (
+    <div className="card">
+      <h2>Shop WhatsApp Ordering</h2>
+      <p className="muted">
+        Shown on every product's checkout as an alternative to online payment — useful before
+        SSLCommerz is set up, and some buyers just prefer messaging over filling out a card form
+        anyway. Leave blank to hide it.
+      </p>
+
+      {message && <div className="alert alert-info">{message}</div>}
+
+      <label className="field">
+        <span>WhatsApp Number</span>
+        <input value={number} onChange={(e) => setNumber(e.target.value)} placeholder="+8801XXXXXXXXX" />
       </label>
 
       <button className="btn btn-primary btn-small" disabled={busy} onClick={save}>

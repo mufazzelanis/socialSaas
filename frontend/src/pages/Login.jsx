@@ -32,6 +32,13 @@ export default function Login() {
   return (
     <div className="auth-page">
       <AuthBrandHeader />
+
+      <Link to="/shop" className="shop-cta-button">
+        <span className="shop-cta-emoji">🛍️</span>
+        Visit our Shop — no login needed
+        <span className="shop-cta-arrow">→</span>
+      </Link>
+
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>Welcome back</h1>
         <p className="auth-subtitle">Log in to manage your social posts.</p>
@@ -72,10 +79,6 @@ export default function Login() {
           Don't have an account? <Link to="/register">Register</Link>
         </p>
       </form>
-
-      <Link to="/shop" className="btn btn-ghost auth-shop-link">
-        🛍️ Visit our Shop — no login needed
-      </Link>
     </div>
   );
 }

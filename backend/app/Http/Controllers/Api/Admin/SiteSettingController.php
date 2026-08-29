@@ -16,6 +16,7 @@ class SiteSettingController extends Controller
             // Meta Pixel IDs are 15-16 digit numbers.
             'facebook_pixel_id' => ['nullable', 'string', 'max:32', 'regex:/^\d+$/'],
             'facebook_pixel_enabled' => ['sometimes', 'boolean'],
+            'shop_whatsapp_number' => ['nullable', 'string', 'max:30'],
         ]);
 
         $setting = SiteSetting::current();

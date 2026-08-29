@@ -11,6 +11,7 @@ class SiteSetting extends Model
         'telegram_button_enabled',
         'facebook_pixel_id',
         'facebook_pixel_enabled',
+        'shop_whatsapp_number',
         'updated_by',
     ];
 

@@ -6,6 +6,7 @@ const DEFAULTS = {
   telegram_button_enabled: false,
   facebook_pixel_id: null,
   facebook_pixel_enabled: false,
+  shop_whatsapp_number: null,
 };
 
 const SiteSettingContext = createContext(null);

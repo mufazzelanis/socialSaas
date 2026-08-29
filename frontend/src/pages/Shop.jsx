@@ -2,13 +2,32 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../api/client';
 import AuthBrandHeader from '../components/AuthBrandHeader';
+import BrandIcon from '../components/BrandIcon';
 import Icon from '../components/Icon';
+import { useSiteSettings } from '../context/SiteSettingContext';
 
 function formatBDT(amount) {
   return '৳' + Number(amount).toLocaleString('en-BD', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+function WhatsAppOrderButton({ product, whatsappNumber }) {
+  if (!whatsappNumber) return null;
+  const digits = whatsappNumber.replace(/\D/g, '');
+  if (!digits) return null;
+
+  const message = `Hi, I'd like to order "${product.title}" (${formatBDT(product.price_bdt)}).`;
+  const url = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="whatsapp-btn btn btn-block">
+      <BrandIcon name="whatsapp" size={16} />
+      Order via WhatsApp instead
+    </a>
+  );
+}
+
 function CheckoutModal({ product, onClose }) {
+  const { settings } = useSiteSettings();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -65,6 +84,13 @@ function CheckoutModal({ product, onClose }) {
             {busy ? 'Redirecting to payment...' : `Pay ${formatBDT(product.price_bdt)}`}
           </button>
         </form>
+
+        {settings.shop_whatsapp_number && (
+          <>
+            <p className="shop-checkout-or">or</p>
+            <WhatsAppOrderButton product={product} whatsappNumber={settings.shop_whatsapp_number} />
+          </>
+        )}
       </div>
     </div>,
     document.body

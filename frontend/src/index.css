@@ -516,12 +516,38 @@
   .auth-footer {
     @apply text-center text-[0.88rem] mt-3;
   }
-  .auth-shop-link {
-    @apply relative z-10 text-center no-underline text-white border-white/50 bg-white/10;
-    backdrop-filter: blur(4px);
+  /* An eye-catching CTA banner, deliberately louder than everything else
+     on the auth pages — a shifting warm gradient (distinct from the cool
+     blue/purple auth-page background so it reads as "different, click
+     me") plus a glowing pulse, meant to pull attention toward the
+     logged-out shop before anyone even looks at the login form. */
+  .shop-cta-button {
+    @apply relative z-10 flex items-center gap-2 no-underline text-white font-bold text-[0.95rem] px-6 py-3 rounded-full shadow-lg animate-in;
+    background: linear-gradient(-45deg, #ff6b6b, #f7b733, #fc4a8a, #ff6b6b);
+    background-size: 300% 300%;
+    animation: gradient-shift 6s ease infinite, shop-cta-glow 2.4s ease-in-out infinite;
   }
-  .auth-shop-link:hover {
-    @apply bg-white/20 text-white;
+  .shop-cta-button:hover {
+    @apply scale-105;
+    animation-play-state: paused;
+  }
+  .shop-cta-emoji {
+    @apply text-[1.15rem];
+  }
+  .shop-cta-arrow {
+    @apply transition-transform duration-300;
+  }
+  .shop-cta-button:hover .shop-cta-arrow {
+    @apply translate-x-1;
+  }
+  @keyframes shop-cta-glow {
+    0%,
+    100% {
+      box-shadow: 0 4px 14px rgb(252 74 138 / 0.4);
+    }
+    50% {
+      box-shadow: 0 4px 24px rgb(247 183 51 / 0.6);
+    }
   }
   .auth-forgot {
     @apply text-right text-[0.82rem] -mt-2 mb-4;
@@ -1480,6 +1506,9 @@
   }
   .shop-checkout-price {
     @apply text-text-muted font-semibold mb-4;
+  }
+  .shop-checkout-or {
+    @apply text-center text-text-muted text-[0.8rem] my-3 uppercase tracking-wide;
   }
   .shop-footer-nav {
     @apply text-center text-[0.88rem] mt-4;
