@@ -8,6 +8,7 @@ const TABS = [
   { key: 'credentials', label: 'Platform Credentials' },
   { key: 'ads', label: 'Ads' },
   { key: 'promote', label: 'Promote' },
+  { key: 'shop', label: 'Shop' },
 ];
 
 const AD_PLACEMENT_LABELS = {
@@ -108,6 +109,12 @@ export default function AdminDashboard() {
       )}
       {tab === 'ads' && <AdsPanel />}
       {tab === 'promote' && <PromotePanel />}
+      {tab === 'shop' && (
+        <>
+          <DigitalProductsPanel />
+          <PaymentSettingsPanel />
+        </>
+      )}
     </Layout>
   );
 }
@@ -1395,6 +1402,391 @@ function ServiceForm({ initial, onSaved, onCancel }) {
         </button>
       </div>
     </form>
+  );
+}
+
+function DigitalProductForm({ initial, onSaved, onCancel }) {
+  const isEdit = !!initial;
+  const [title, setTitle] = useState(initial?.title || '');
+  const [description, setDescription] = useState(initial?.description || '');
+  const [price, setPrice] = useState(initial?.price_bdt ?? '');
+  const [sortOrder, setSortOrder] = useState(initial?.sort_order ?? 0);
+  const [isEnabled, setIsEnabled] = useState(initial?.is_enabled ?? true);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(initial?.image_url || null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [file, setFile] = useState(null);
+  const [currentFileName, setCurrentFileName] = useState(initial?.file_name || null);
+  const [removeFile, setRemoveFile] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const handleImageChange = (e) => {
+    const picked = e.target.files?.[0] || null;
+    setImageFile(picked);
+    setRemoveImage(false);
+    if (picked) setImagePreview(URL.createObjectURL(picked));
+  };
+
+  const handleFileChange = (e) => {
+    const picked = e.target.files?.[0] || null;
+    setFile(picked);
+    setRemoveFile(false);
+    if (picked) setCurrentFileName(picked.name);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append('title', title);
+      form.append('description', description || '');
+      form.append('price', price);
+      form.append('sort_order', sortOrder);
+      form.append('is_enabled', isEnabled ? '1' : '0');
+      if (imageFile) form.append('image', imageFile);
+      if (removeImage) form.append('remove_image', '1');
+      if (file) form.append('file', file);
+      if (removeFile) form.append('remove_file', '1');
+
+      if (isEdit) {
+        await api.post(`/admin/digital-products/${initial.id}`, form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        await api.post('/admin/digital-products', form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
+      onSaved();
+    } catch (err) {
+      const errors = err.response?.data?.errors;
+      const firstError = errors ? Object.values(errors)[0]?.[0] : null;
+      setError(firstError || err.response?.data?.message || 'Could not save this product.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="card" onSubmit={handleSubmit}>
+      <h2>{isEdit ? 'Edit Product' : 'Add Product'}</h2>
+
+      {error && <div className="alert alert-error">{error}</div>}
+
+      <div className="upload-box mb-4">
+        <h3>Cover Image</h3>
+        <p className="upload-hint">Shown as the shop card thumbnail. Square-ish images look best.</p>
+        <div className="upload-preview">
+          {imagePreview ? (
+            <img src={imagePreview} alt="Preview" />
+          ) : (
+            <span className="upload-preview-empty">No image set</span>
+          )}
+        </div>
+        <div className="upload-actions">
+          <label className="file-input-label">
+            📤 Upload Image
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleImageChange} />
+          </label>
+          {imagePreview && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-danger btn-small"
+              onClick={() => {
+                setImageFile(null);
+                setImagePreview(null);
+                setRemoveImage(true);
+              }}
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="upload-box mb-4">
+        <h3>Deliverable File</h3>
+        <p className="upload-hint">
+          What the buyer actually downloads after paying — never public, only served through a
+          paid order's own download link.
+        </p>
+        <p className="muted small">
+          {currentFileName ? `Current file: ${currentFileName}` : 'No file uploaded yet.'}
+        </p>
+        <div className="upload-actions">
+          <label className="file-input-label">
+            📤 Upload File
+            <input type="file" onChange={handleFileChange} />
+          </label>
+          {currentFileName && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-danger btn-small"
+              onClick={() => {
+                setFile(null);
+                setCurrentFileName(null);
+                setRemoveFile(true);
+              }}
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="form-row">
+        <label className="field">
+          <span>Title</span>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+        </label>
+        <label className="field">
+          <span>Price (BDT)</span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            required
+          />
+        </label>
+      </div>
+
+      <label className="field">
+        <span>Description (shown on the shop card)</span>
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
+      </label>
+
+      <div className="form-row">
+        <label className="field">
+          <span>Sort Order (lower shows first)</span>
+          <input type="number" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
+        </label>
+        <label className="toggle self-end mb-4">
+          <input type="checkbox" checked={isEnabled} onChange={(e) => setIsEnabled(e.target.checked)} />
+          Enabled (visible in the shop)
+        </label>
+      </div>
+
+      <div className="form-actions">
+        <button className="btn btn-primary" disabled={busy}>
+          {busy ? 'Saving...' : 'Save Product'}
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function DigitalProductsPanel() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+
+  const load = (silent = false) => {
+    if (!silent) setLoading(true);
+    api
+      .get('/admin/digital-products')
+      .then((res) => setProducts(res.data))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const remove = async (product) => {
+    if (!window.confirm(`Delete "${product.title}"?`)) return;
+    setBusyId(product.id);
+    try {
+      await api.delete(`/admin/digital-products/${product.id}`);
+      load(true);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (loading) return <p>Loading...</p>;
+
+  return (
+    <div className="card">
+      <div className="panel-header">
+        <h2 className="panel-title-inline">Digital Products ({products.length})</h2>
+        {!showCreate && (
+          <button className="btn btn-primary btn-small" onClick={() => setShowCreate(true)}>
+            + Add Product
+          </button>
+        )}
+      </div>
+      <p className="muted">
+        Shown on the public <code>/shop</code> page — anyone can browse and buy without logging
+        in. Payment goes through SSLCommerz (configure below); the file is delivered
+        automatically once payment is confirmed.
+      </p>
+
+      {showCreate && (
+        <DigitalProductForm
+          onSaved={() => {
+            setShowCreate(false);
+            load(true);
+          }}
+          onCancel={() => setShowCreate(false)}
+        />
+      )}
+
+      {products.length === 0 ? (
+        <p className="muted">No products yet.</p>
+      ) : (
+        <div className="shop-grid">
+          {products.map((product) =>
+            editingId === product.id ? (
+              <div key={product.id} className="col-span-full">
+                <DigitalProductForm
+                  initial={product}
+                  onSaved={() => {
+                    setEditingId(null);
+                    load(true);
+                  }}
+                  onCancel={() => setEditingId(null)}
+                />
+              </div>
+            ) : (
+              <div className="shop-card" key={product.id}>
+                <div className="shop-card-image">
+                  {product.image_url ? (
+                    <img src={product.image_url} alt={product.title} />
+                  ) : (
+                    <span className="shop-card-image-empty">{product.title[0]}</span>
+                  )}
+                </div>
+                <div className="shop-card-body">
+                  <strong>{product.title}</strong>
+                  <span className="shop-price">৳{product.price_bdt}</span>
+                  {!product.is_enabled && <span className="status-badge status-draft">Disabled</span>}
+                  {!product.has_file && (
+                    <span className="status-badge status-draft">No file uploaded</span>
+                  )}
+                  <div className="form-actions mt-auto">
+                    <button className="btn btn-ghost btn-small" onClick={() => setEditingId(product.id)}>
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-danger btn-small"
+                      disabled={busyId === product.id}
+                      onClick={() => remove(product)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PaymentSettingsPanel() {
+  const [settings, setSettings] = useState(null);
+  const [storeId, setStoreId] = useState('');
+  const [storePassword, setStorePassword] = useState('');
+  const [isSandbox, setIsSandbox] = useState(true);
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  const load = () => {
+    api.get('/admin/payment-settings').then((res) => {
+      setSettings(res.data);
+      setStoreId(res.data.store_id || '');
+      setIsSandbox(!!res.data.is_sandbox);
+      setEnabled(!!res.data.is_enabled);
+    });
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const save = async () => {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await api.post('/admin/payment-settings', {
+        store_id: storeId,
+        store_password: storePassword || undefined,
+        is_sandbox: isSandbox,
+        is_enabled: enabled,
+      });
+      setMessage('Payment settings saved.');
+      setStorePassword('');
+      load();
+    } catch (err) {
+      const errors = err.response?.data?.errors;
+      const firstError = errors ? Object.values(errors)[0]?.[0] : null;
+      setError(firstError || err.response?.data?.message || 'Could not save.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!settings) return <p>Loading...</p>;
+
+  return (
+    <div className="card">
+      <h2>Payment Settings (SSLCommerz)</h2>
+      <p className="muted">
+        Powers checkout on the <code>/shop</code> page. Get a free Sandbox Store ID/Password at{' '}
+        <a href="https://developer.sslcommerz.com/registration/" target="_blank" rel="noreferrer">
+          developer.sslcommerz.com
+        </a>{' '}
+        to test end-to-end before switching to a live (KYC-verified) store for real payments.
+      </p>
+
+      {error && <div className="alert alert-error">{error}</div>}
+      {message && <div className="alert alert-info">{message}</div>}
+
+      <div className="form-row">
+        <label className="field">
+          <span>Store ID</span>
+          <input value={storeId} onChange={(e) => setStoreId(e.target.value)} placeholder="testbox" />
+        </label>
+        <label className="field">
+          <span>Store Password</span>
+          <input
+            type="password"
+            value={storePassword}
+            onChange={(e) => setStorePassword(e.target.value)}
+            placeholder={settings.has_password ? '••••••••••••••••' : 'qwerty'}
+          />
+        </label>
+      </div>
+
+      <label className="toggle mb-3.5">
+        <input type="checkbox" checked={isSandbox} onChange={(e) => setIsSandbox(e.target.checked)} />
+        Sandbox mode (test payments — switch off only once you have a real, verified store)
+      </label>
+
+      <label className="toggle mb-3.5">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        Enable checkout
+      </label>
+
+      <button className="btn btn-primary btn-small" disabled={busy} onClick={save}>
+        {busy ? 'Saving...' : 'Save'}
+      </button>
+    </div>
   );
 }
 

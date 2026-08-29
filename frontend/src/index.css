@@ -1418,4 +1418,75 @@
   .ai-generate-actions {
     @apply flex gap-2;
   }
+
+  /* ---------------- Shop (digital products storefront) ---------------- */
+  .shop-page {
+    @apply min-h-screen flex flex-col items-center gap-6 py-10 px-4 bg-bg;
+  }
+  .shop-content {
+    @apply w-full max-w-[960px];
+  }
+  .shop-content--narrow {
+    @apply max-w-[420px];
+  }
+  .shop-title {
+    @apply text-2xl font-bold text-center mb-1;
+  }
+  .shop-subtitle {
+    @apply text-text-muted text-center mb-6;
+  }
+  .shop-grid {
+    @apply grid gap-5;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+  .shop-card {
+    @apply border border-border rounded-2xl overflow-hidden flex flex-col bg-surface shadow-sm transition-all;
+  }
+  .shop-card:hover {
+    @apply shadow-lg -translate-y-1 border-primary/30;
+  }
+  .shop-card-image {
+    @apply block w-full aspect-square p-2.5 overflow-hidden;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 10%, white), color-mix(in srgb, var(--primary) 3%, white));
+  }
+  :root[data-theme='dark'] .shop-card-image {
+    background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 25%, black), color-mix(in srgb, var(--primary) 8%, black));
+  }
+  .shop-card-image img {
+    @apply w-full h-full object-contain rounded-lg;
+    filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.12));
+  }
+  .shop-card-image-empty {
+    @apply w-full h-full flex items-center justify-center text-3xl font-bold text-text-muted/40;
+  }
+  .shop-card-body {
+    @apply p-4 flex flex-col gap-2 flex-1;
+  }
+  .shop-card-title {
+    @apply font-bold text-text text-[1rem] leading-snug m-0;
+  }
+  .shop-card-footer {
+    @apply flex items-center justify-between gap-2 mt-auto pt-2;
+  }
+  .shop-price {
+    @apply font-bold text-primary text-[1.05rem];
+  }
+  .shop-checkout-price {
+    @apply text-text-muted font-semibold mb-4;
+  }
+  .shop-footer-nav {
+    @apply text-center text-[0.88rem] mt-4;
+  }
+  .order-status-card {
+    @apply flex flex-col items-center text-center gap-2 py-8;
+  }
+  .order-status-icon {
+    @apply mb-2;
+  }
+  .order-status-icon--success {
+    @apply text-success;
+  }
+  .order-status-icon--error {
+    @apply text-danger;
+  }
 }

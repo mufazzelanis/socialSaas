@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\Admin\ActivityLogController;
 use App\Http\Controllers\Api\Admin\AdSlotController as AdminAdSlotController;
 use App\Http\Controllers\Api\Admin\AiSettingController;
+use App\Http\Controllers\Api\Admin\DigitalProductController as AdminDigitalProductController;
+use App\Http\Controllers\Api\Admin\PaymentSettingController;
 use App\Http\Controllers\Api\Admin\PlatformCredentialController;
 use App\Http\Controllers\Api\Admin\ServiceController as AdminServiceController;
 use App\Http\Controllers\Api\Admin\SiteSettingController as AdminSiteSettingController;
@@ -12,7 +14,9 @@ use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BrandSettingController;
 use App\Http\Controllers\Api\InboxController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SiteSettingController;
@@ -52,6 +56,22 @@ Route::get('/brand-settings', [BrandSettingController::class, 'show']);
 Route::post('/webhooks/telegram/{secret}', [TelegramWebhookController::class, 'handle']);
 Route::get('/webhooks/meta', [MetaWebhookController::class, 'verify']);
 Route::post('/webhooks/meta', [MetaWebhookController::class, 'handle']);
+
+// Public: the digital products storefront — no login required to browse or
+// buy, same as any normal shop page.
+Route::get('/products', [ProductController::class, 'index']);
+Route::post('/orders', [OrderController::class, 'store']);
+Route::get('/orders/{tranId}', [OrderController::class, 'show']);
+Route::get('/orders/{tranId}/download/{token}', [OrderController::class, 'download']);
+
+// Public: SSLCommerz calls these directly (the buyer's own browser for
+// success/fail/cancel, their server for the IPN) — none of them carry a
+// Sanctum token, and success/fail/cancel support both GET and POST since
+// which one SSLCommerz uses depends on the merchant panel's own config.
+Route::match(['get', 'post'], '/payments/sslcommerz/success', [OrderController::class, 'success']);
+Route::match(['get', 'post'], '/payments/sslcommerz/fail', [OrderController::class, 'fail']);
+Route::match(['get', 'post'], '/payments/sslcommerz/cancel', [OrderController::class, 'cancel']);
+Route::post('/payments/sslcommerz/ipn', [OrderController::class, 'ipn']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -104,6 +124,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/ai-settings', [AiSettingController::class, 'show']);
         Route::post('/ai-settings', [AiSettingController::class, 'update']);
+
+        Route::get('/digital-products', [AdminDigitalProductController::class, 'index']);
+        Route::post('/digital-products', [AdminDigitalProductController::class, 'store']);
+        Route::post('/digital-products/{product}', [AdminDigitalProductController::class, 'update']);
+        Route::delete('/digital-products/{product}', [AdminDigitalProductController::class, 'destroy']);
+
+        Route::get('/payment-settings', [PaymentSettingController::class, 'show']);
+        Route::post('/payment-settings', [PaymentSettingController::class, 'update']);
     });
 
     // Branding is a super-admin-only customization (logo/favicon/color for
