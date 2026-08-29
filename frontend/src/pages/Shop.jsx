@@ -34,7 +34,7 @@ function PaymentMethodsRow() {
   );
 }
 
-function WhatsAppOrderButton({ product, whatsappNumber }) {
+function WhatsAppOrderButton({ product, whatsappNumber, small = false, label = 'Order via WhatsApp instead' }) {
   if (!whatsappNumber) return null;
   const digits = whatsappNumber.replace(/\D/g, '');
   if (!digits) return null;
@@ -43,9 +43,17 @@ function WhatsAppOrderButton({ product, whatsappNumber }) {
   const url = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="whatsapp-btn btn btn-block">
-      <BrandIcon name="whatsapp" size={16} />
-      Order via WhatsApp instead
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={'whatsapp-btn btn btn-block' + (small ? ' btn-small' : '')}
+      // Buttons like this sit on top of a clickable card elsewhere on this
+      // page — stop the click from also bubbling up to a card-level handler.
+      onClick={(e) => e.stopPropagation()}
+    >
+      <BrandIcon name="whatsapp" size={small ? 14 : 16} />
+      {label}
     </a>
   );
 }
@@ -123,7 +131,7 @@ function CheckoutModal({ product, onClose }) {
   );
 }
 
-function DetailsModal({ product, onClose, onBuy }) {
+function DetailsModal({ product, onClose, onBuy, whatsappNumber }) {
   return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
@@ -141,6 +149,12 @@ function DetailsModal({ product, onClose, onBuy }) {
             Buy Now
           </button>
         </div>
+
+        {whatsappNumber && (
+          <div className="mt-2.5">
+            <WhatsAppOrderButton product={product} whatsappNumber={whatsappNumber} />
+          </div>
+        )}
       </div>
     </div>,
     document.body
@@ -148,6 +162,7 @@ function DetailsModal({ product, onClose, onBuy }) {
 }
 
 export default function Shop() {
+  const { settings } = useSiteSettings();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [detailsProduct, setDetailsProduct] = useState(null);
@@ -207,6 +222,14 @@ export default function Shop() {
                       Buy Now
                     </button>
                   </div>
+                  {settings.shop_whatsapp_number && (
+                    <WhatsAppOrderButton
+                      product={product}
+                      whatsappNumber={settings.shop_whatsapp_number}
+                      small
+                      label="Order via WhatsApp"
+                    />
+                  )}
                 </div>
               </div>
             ))}
@@ -222,6 +245,7 @@ export default function Shop() {
             setCheckoutProduct(detailsProduct);
             setDetailsProduct(null);
           }}
+          whatsappNumber={settings.shop_whatsapp_number}
         />
       )}
 

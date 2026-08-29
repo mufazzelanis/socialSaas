@@ -1479,7 +1479,7 @@
     grid-template-columns: repeat(auto-fit, minmax(240px, 300px));
   }
   .shop-card {
-    @apply border border-border rounded-2xl overflow-hidden flex flex-col bg-surface shadow-sm transition-all;
+    @apply border border-border rounded-2xl overflow-hidden flex flex-col bg-surface shadow-sm transition-all min-w-0;
   }
   .shop-card:hover {
     @apply shadow-lg -translate-y-1 border-primary/30;
@@ -1499,7 +1499,7 @@
     @apply w-full h-full flex items-center justify-center text-3xl font-bold text-text-muted/40;
   }
   .shop-card-body {
-    @apply p-4 flex flex-col gap-2 flex-1;
+    @apply p-4 flex flex-col gap-2 flex-1 min-w-0;
   }
   .shop-card-title {
     @apply text-left bg-transparent border-none p-0 cursor-pointer font-bold text-text text-[1rem] leading-snug;
@@ -1508,7 +1508,13 @@
     @apply text-primary underline;
   }
   .shop-card-desc {
-    @apply text-text-muted text-[0.85rem] leading-snug my-0;
+    /* min-w-0 is load-bearing here, not decorative — a flex child (this
+       sits inside .shop-card-body's flex column) defaults to
+       min-width: auto, which lets its content overflow past the
+       container's actual width instead of wrapping. line-clamp then has
+       no real line boundary to clip at, so the full text renders uncut —
+       exactly what showed up on mobile. */
+    @apply text-text-muted text-[0.85rem] leading-snug my-0 min-w-0;
   }
   .shop-details-desc {
     @apply text-text-muted text-[0.92rem] leading-relaxed whitespace-pre-wrap;
