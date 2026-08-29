@@ -72,6 +72,10 @@ export default function Login() {
           Don't have an account? <Link to="/register">Register</Link>
         </p>
       </form>
+
+      <Link to="/shop" className="btn btn-ghost auth-shop-link">
+        🛍️ Visit our Shop — no login needed
+      </Link>
     </div>
   );
 }

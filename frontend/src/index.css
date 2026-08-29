@@ -516,6 +516,13 @@
   .auth-footer {
     @apply text-center text-[0.88rem] mt-3;
   }
+  .auth-shop-link {
+    @apply relative z-10 text-center no-underline text-white border-white/50 bg-white/10;
+    backdrop-filter: blur(4px);
+  }
+  .auth-shop-link:hover {
+    @apply bg-white/20 text-white;
+  }
   .auth-forgot {
     @apply text-right text-[0.82rem] -mt-2 mb-4;
   }
