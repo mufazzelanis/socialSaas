@@ -10,6 +10,30 @@ function formatBDT(amount) {
   return '৳' + Number(amount).toLocaleString('en-BD', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+// Purely illustrative — brand-colored text badges rather than real logos,
+// so this never depends on an external image loading. The actual choice of
+// method happens on SSLCommerz's own hosted page after checkout; this row
+// just signals up front that it's not "one fixed way to pay".
+function PaymentMethodsRow() {
+  const methods = [
+    { name: 'bKash', color: '#e2136e' },
+    { name: 'Nagad', color: '#f6921e' },
+    { name: 'Rocket', color: '#8c3494' },
+    { name: 'Visa', color: '#1a1f71' },
+    { name: 'Mastercard', color: '#eb001b' },
+  ];
+  return (
+    <div className="payment-methods-row">
+      <span className="payment-methods-label">Pay with:</span>
+      {methods.map((m) => (
+        <span key={m.name} className="payment-badge" style={{ background: m.color }}>
+          {m.name}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function WhatsAppOrderButton({ product, whatsappNumber }) {
   if (!whatsappNumber) return null;
   const digits = whatsappNumber.replace(/\D/g, '');
@@ -80,6 +104,8 @@ function CheckoutModal({ product, onClose }) {
             <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01XXXXXXXXX" />
           </label>
 
+          <PaymentMethodsRow />
+
           <button className="btn btn-primary btn-block" disabled={busy}>
             {busy ? 'Redirecting to payment...' : `Pay ${formatBDT(product.price_bdt)}`}
           </button>
@@ -97,9 +123,34 @@ function CheckoutModal({ product, onClose }) {
   );
 }
 
+function DetailsModal({ product, onClose, onBuy }) {
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose} aria-label="Close">
+          <Icon name="x" size={18} />
+        </button>
+
+        {product.image_url && <img src={product.image_url} alt={product.title} className="modal-image" />}
+        <h2>{product.title}</h2>
+        {product.description && <p className="shop-details-desc">{product.description}</p>}
+
+        <div className="shop-card-footer mt-3.5">
+          <span className="shop-price">{formatBDT(product.price_bdt)}</span>
+          <button type="button" className="btn btn-primary" onClick={onBuy}>
+            Buy Now
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function Shop() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [detailsProduct, setDetailsProduct] = useState(null);
   const [checkoutProduct, setCheckoutProduct] = useState(null);
 
   useEffect(() => {
@@ -124,16 +175,28 @@ export default function Shop() {
           <div className="shop-grid">
             {products.map((product) => (
               <div className="shop-card" key={product.id}>
-                <div className="shop-card-image">
+                <button
+                  type="button"
+                  className="shop-card-image"
+                  onClick={() => setDetailsProduct(product)}
+                >
                   {product.image_url ? (
                     <img src={product.image_url} alt={product.title} />
                   ) : (
                     <span className="shop-card-image-empty">{product.title[0]}</span>
                   )}
-                </div>
+                </button>
                 <div className="shop-card-body">
-                  <h3 className="shop-card-title">{product.title}</h3>
-                  {product.description && <p className="muted small">{product.description}</p>}
+                  <button
+                    type="button"
+                    className="shop-card-title"
+                    onClick={() => setDetailsProduct(product)}
+                  >
+                    {product.title}
+                  </button>
+                  {product.description && (
+                    <p className="shop-card-desc line-clamp-2">{product.description}</p>
+                  )}
                   <div className="shop-card-footer">
                     <span className="shop-price">{formatBDT(product.price_bdt)}</span>
                     <button
@@ -150,6 +213,17 @@ export default function Shop() {
           </div>
         )}
       </div>
+
+      {detailsProduct && (
+        <DetailsModal
+          product={detailsProduct}
+          onClose={() => setDetailsProduct(null)}
+          onBuy={() => {
+            setCheckoutProduct(detailsProduct);
+            setDetailsProduct(null);
+          }}
+        />
+      )}
 
       {checkoutProduct && (
         <CheckoutModal product={checkoutProduct} onClose={() => setCheckoutProduct(null)} />

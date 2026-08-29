@@ -36,7 +36,7 @@ export default function Login() {
       <Link to="/shop" className="shop-cta-button">
         <span className="shop-cta-emoji">🛍️</span>
         Visit our Shop — no login needed
-        <span className="shop-cta-arrow">→</span>
+        <span className="shop-cta-arrow size-3">→</span>
       </Link>
 
       <form className="auth-card" onSubmit={handleSubmit}>

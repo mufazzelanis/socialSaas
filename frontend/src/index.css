@@ -1469,8 +1469,14 @@
     @apply text-text-muted text-center mb-6;
   }
   .shop-grid {
-    @apply grid gap-5;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    /* auto-fit + a capped max (not auto-fill, not an uncapped 1fr) — with
+       only one or two products, auto-fill leaves phantom empty columns
+       that shove the real card into a narrow strip on the left, and an
+       uncapped 1fr instead stretches a lone card to the full container
+       width. Capping each track's max and centering the row gives a lone
+       product a normal, fixed-width card instead of either of those. */
+    @apply grid gap-5 justify-center;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 300px));
   }
   .shop-card {
     @apply border border-border rounded-2xl overflow-hidden flex flex-col bg-surface shadow-sm transition-all;
@@ -1479,7 +1485,7 @@
     @apply shadow-lg -translate-y-1 border-primary/30;
   }
   .shop-card-image {
-    @apply block w-full aspect-square p-2.5 overflow-hidden;
+    @apply block w-full aspect-square border-none p-2.5 cursor-pointer overflow-hidden;
     background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 10%, white), color-mix(in srgb, var(--primary) 3%, white));
   }
   :root[data-theme='dark'] .shop-card-image {
@@ -1496,7 +1502,25 @@
     @apply p-4 flex flex-col gap-2 flex-1;
   }
   .shop-card-title {
-    @apply font-bold text-text text-[1rem] leading-snug m-0;
+    @apply text-left bg-transparent border-none p-0 cursor-pointer font-bold text-text text-[1rem] leading-snug;
+  }
+  .shop-card-title:hover {
+    @apply text-primary underline;
+  }
+  .shop-card-desc {
+    @apply text-text-muted text-[0.85rem] leading-snug my-0;
+  }
+  .shop-details-desc {
+    @apply text-text-muted text-[0.92rem] leading-relaxed whitespace-pre-wrap;
+  }
+  .payment-methods-row {
+    @apply flex flex-wrap items-center gap-1.5 my-3;
+  }
+  .payment-methods-label {
+    @apply text-text-muted text-[0.75rem] mr-1;
+  }
+  .payment-badge {
+    @apply inline-flex items-center rounded-md px-2 py-1 text-[0.7rem] font-bold text-white;
   }
   .shop-card-footer {
     @apply flex items-center justify-between gap-2 mt-auto pt-2;
