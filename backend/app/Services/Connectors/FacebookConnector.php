@@ -4,6 +4,7 @@ namespace App\Services\Connectors;
 
 use App\Models\PlatformCredential;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -41,6 +42,11 @@ class FacebookConnector implements SocialConnectorInterface
         // still use plain `scope`, so support both.
         if ($credential->config_id) {
             $params['config_id'] = $credential->config_id;
+            // Facebook Login for Business ignores `scope` entirely — the
+            // permission list lives in the Configuration itself (Meta App
+            // Dashboard -> Facebook Login for Business -> Configurations),
+            // so pages_messaging/pages_manage_metadata/instagram_manage_messages
+            // must be added there too, not just in the plain-scope branch below.
         } else {
             $params['scope'] = implode(',', [
                 'pages_show_list',
@@ -48,6 +54,15 @@ class FacebookConnector implements SocialConnectorInterface
                 'pages_read_engagement',
                 'instagram_basic',
                 'instagram_content_publish',
+                // Needed for the Inbox feature: pages_messaging to actually
+                // send/receive Messenger messages, pages_manage_metadata to
+                // subscribe a connected Page to our webhook (see
+                // subscribeToWebhook() below) — without both, messages for
+                // any Page other than the app's own admins/testers never
+                // reach handleCallback()'s webhook at all.
+                'pages_messaging',
+                'pages_manage_metadata',
+                'instagram_manage_messages',
             ]);
         }
 
@@ -99,6 +114,18 @@ class FacebookConnector implements SocialConnectorInterface
                 meta: [],
             );
 
+            // Meta only ever fires the messages webhook for a Page once the
+            // Page itself is subscribed to this app — that's a separate,
+            // per-Page opt-in from granting the OAuth permission above.
+            // Doing it here means a customer connecting their own Page just
+            // works, instead of only the pages someone manually subscribed
+            // via the App Dashboard (which in practice was only ever the
+            // developer's own test Page). The same subscription also covers
+            // Instagram DMs for whichever IG account is linked below, since
+            // Instagram Messaging rides on the linked Page's subscription
+            // rather than having one of its own.
+            $this->subscribeToWebhook($page['id'], $page['access_token']);
+
             $igAccountId = $page['instagram_business_account']['id'] ?? null;
 
             if ($igAccountId) {
@@ -124,6 +151,31 @@ class FacebookConnector implements SocialConnectorInterface
         }
 
         return $accounts;
+    }
+
+    /**
+     * Opts a connected Page into this app's webhook for the given fields.
+     * Requires pages_manage_metadata (to make the call) and pages_messaging
+     * (for `messages`/`messaging_postbacks` to actually carry data) on the
+     * Page access token — deliberately non-fatal if either isn't granted
+     * yet (e.g. Meta hasn't approved them for this user's account tier
+     * yet, or the app is still in Development mode for non-tester users):
+     * posting and everything else this connector does must keep working
+     * even when messaging can't be wired up yet.
+     */
+    protected function subscribeToWebhook(string $pageId, string $pageAccessToken): void
+    {
+        $response = Http::post($this->graphUrl("{$pageId}/subscribed_apps"), [
+            'access_token' => $pageAccessToken,
+            'subscribed_fields' => 'messages,messaging_postbacks',
+        ]);
+
+        if (! $response->successful()) {
+            Log::warning('Facebook: could not subscribe Page to webhook (messaging may not work for it).', [
+                'page_id' => $pageId,
+                'error' => $response->json('error.message') ?? $response->body(),
+            ]);
+        }
     }
 
     protected function assertOk($response, string $message): void
