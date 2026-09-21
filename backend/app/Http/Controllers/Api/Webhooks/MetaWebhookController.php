@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api\Webhooks;
 
 use App\Http\Controllers\Controller;
+use App\Models\Conversation;
 use App\Models\PlatformCredential;
 use App\Models\SocialAccount;
 use App\Services\Messaging\MessageIngestionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -111,11 +113,57 @@ class MetaWebhookController extends Controller
         $this->ingestion->ingestInbound(
             account: $account,
             participantId: $senderId,
-            participantName: null, // fetched lazily via the Graph API when the inbox UI needs it, not stored per-message
+            participantName: $this->resolveParticipantName($account, $senderId),
             content: $event['message']['text'] ?? null,
             externalMessageId: $event['message']['mid'] ?? null,
             mediaUrl: $event['message']['attachments'][0]['payload']['url'] ?? null,
         );
+    }
+
+    /**
+     * Messenger/Instagram webhooks carry only an opaque sender id, never the
+     * person's name, so without this every conversation shows as "Unknown".
+     * Looked up once per conversation (an existing name is reused) rather
+     * than on every message, and deliberately non-fatal — a failed lookup
+     * must never drop the message itself, it just stays "Unknown" until
+     * the next message retries.
+     */
+    protected function resolveParticipantName(SocialAccount $account, string $senderId): ?string
+    {
+        $existing = Conversation::where('social_account_id', $account->id)
+            ->where('participant_id', $senderId)
+            ->value('participant_name');
+
+        if ($existing) {
+            return $existing;
+        }
+
+        try {
+            $fields = $account->platform === 'instagram' ? 'name,username' : 'name';
+
+            $response = Http::timeout(5)->get(
+                'https://graph.facebook.com/'.config('social.facebook_graph_version').'/'.$senderId,
+                ['fields' => $fields, 'access_token' => $account->access_token]
+            );
+
+            if (! $response->successful()) {
+                Log::info('Meta webhook: could not look up sender name.', [
+                    'platform' => $account->platform,
+                    'error' => $response->json('error.message'),
+                ]);
+
+                return null;
+            }
+
+            $name = $response->json('name');
+            $username = $response->json('username');
+
+            return $name ?: ($username ? '@'.$username : null);
+        } catch (\Throwable $e) {
+            Log::info('Meta webhook: sender name lookup failed.', ['error' => $e->getMessage()]);
+
+            return null;
+        }
     }
 
     /**
