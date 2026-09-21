@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import WhatsAppSignupButton from '../components/WhatsAppSignupButton';
 
 const PLATFORM_LABELS = {
   telegram: 'Telegram',
@@ -73,6 +74,7 @@ export default function ConnectAccounts() {
   const [chatId, setChatId] = useState('');
   const [accountName, setAccountName] = useState('');
   const [telegramBot, setTelegramBot] = useState(null);
+  const [waSignup, setWaSignup] = useState(null);
 
   // `silent` skips the loading spinner — used after connect/disconnect so
   // the list just quietly updates in place instead of flashing blank first.
@@ -90,6 +92,10 @@ export default function ConnectAccounts() {
       .get('/social-accounts/telegram-bot-info')
       .then((res) => setTelegramBot(res.data))
       .catch(() => setTelegramBot({ configured: false, bot_username: null }));
+    api
+      .get('/social-accounts/whatsapp/signup-config')
+      .then((res) => setWaSignup(res.data))
+      .catch(() => setWaSignup({ configured: false }));
   }, []);
 
   const handleConnectTelegram = async (e) => {
@@ -273,9 +279,9 @@ export default function ConnectAccounts() {
       <div className="card">
         <h2>WhatsApp</h2>
         <p className="muted">
-          Messaging only (no scheduled posts) — replies here go through your business's
-          WhatsApp number. While in Meta's test mode, only phone numbers your admin has
-          verified can actually message it.
+          Messaging only (no scheduled posts) — log in with Facebook and choose or add your own
+          WhatsApp Business number; customer messages to it show up in your Inbox and you reply
+          from there.
         </p>
 
         {!allowed.includes('whatsapp') ? (
@@ -283,9 +289,28 @@ export default function ConnectAccounts() {
             🔒 Not available for your account yet. Ask your admin to turn it on for you.
           </div>
         ) : (
-          <button className="btn btn-primary" disabled={whatsappBusy} onClick={handleConnectWhatsapp}>
-            {whatsappBusy ? 'Connecting...' : '💬 Connect WhatsApp'}
-          </button>
+          <>
+            {error && <div className="alert alert-error">{error}</div>}
+            {success && <div className="alert alert-success">{success}</div>}
+            {waSignup?.configured ? (
+              <WhatsAppSignupButton
+                config={waSignup}
+                onConnected={() => {
+                  setError('');
+                  setSuccess('WhatsApp account connected successfully.');
+                  loadAccounts(true);
+                }}
+                onError={(msg) => {
+                  setSuccess('');
+                  setError(msg);
+                }}
+              />
+            ) : (
+              <button className="btn btn-primary" disabled={whatsappBusy} onClick={handleConnectWhatsapp}>
+                {whatsappBusy ? 'Connecting...' : '💬 Connect WhatsApp'}
+              </button>
+            )}
+          </>
         )}
       </div>
 

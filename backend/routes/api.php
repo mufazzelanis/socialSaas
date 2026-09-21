@@ -81,6 +81,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/social-accounts', [SocialAccountController::class, 'index']);
     Route::get('/social-accounts/telegram-bot-info', [SocialAccountController::class, 'telegramBotInfo']);
+    Route::get('/social-accounts/whatsapp/signup-config', [SocialAccountController::class, 'whatsappSignupConfig']);
+    Route::post('/social-accounts/whatsapp/embedded-signup', [SocialAccountController::class, 'connectWhatsappEmbedded']);
     Route::post('/social-accounts', [SocialAccountController::class, 'store']);
     Route::delete('/social-accounts/{socialAccount}', [SocialAccountController::class, 'destroy']);
     Route::get('/social-accounts/oauth/{platform}/redirect', [SocialOAuthController::class, 'redirect']);
