@@ -55,10 +55,17 @@ class MetaWebhookController extends Controller
         $credential = PlatformCredential::where('platform', 'facebook')->first();
 
         if (! $this->verifySignature($request, $credential?->client_secret)) {
+            Log::warning('Meta webhook rejected: bad or missing signature.');
+
             abort(403);
         }
 
         $object = $request->input('object');
+
+        Log::info('Meta webhook received.', [
+            'object' => $object,
+            'entry_ids' => collect($request->input('entry', []))->pluck('id')->all(),
+        ]);
 
         if ($object === 'whatsapp_business_account') {
             $this->handleWhatsappEntries($request->input('entry', []));
